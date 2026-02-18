@@ -14,6 +14,14 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] ESLint configuration
 - [x] Memory bank documentation
 - [x] Recipe system for common features
+- [x] AI Model Browser page — fetches from https://api.kilo.ai/api/gateway/models
+- [x] ModelCard component with Copy Model ID button, provider badge, free badge, pricing stats
+- [x] SearchFilter component — search by name/ID, filter by provider dropdown, live count
+- [x] ViewToggle component — Grid / List view toggle
+- [x] SkeletonCard / SkeletonGrid — animated skeleton loaders for loading state
+- [x] ModelsBrowser orchestrator component with error state and empty state
+- [x] Dark mode globals.css with zinc/slate palette, custom scrollbar, neon-green/violet theme vars
+- [x] Updated layout.tsx metadata for Kilo Gateway AI Model Explorer
 
 ## Current Structure
 
