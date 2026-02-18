@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { AIModel, ModelsResponse } from "@/lib/types";
-import { getProviderFromId, getUniqueProviders } from "@/lib/utils";
+import { getProviderFromId, getUniqueProviders, isFreeModel } from "@/lib/utils";
 import { ModelCard } from "./ModelCard";
 import { SearchFilter } from "./SearchFilter";
 import { ViewToggle } from "./ViewToggle";
@@ -77,6 +77,7 @@ export function ModelsBrowser() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
+  const [freeOnly, setFreeOnly] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
 
   const fetchModels = async () => {
@@ -119,11 +120,13 @@ export function ModelsBrowser() {
         !selectedProvider ||
         getProviderFromId(model.id) === selectedProvider;
 
-      return matchesSearch && matchesProvider;
-    });
-  }, [models, search, selectedProvider]);
+      const matchesFree = !freeOnly || isFreeModel(model);
 
-  const hasFilters = !!search || !!selectedProvider;
+      return matchesSearch && matchesProvider && matchesFree;
+    });
+  }, [models, search, selectedProvider, freeOnly]);
+
+  const hasFilters = !!search || !!selectedProvider || freeOnly;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -183,6 +186,8 @@ export function ModelsBrowser() {
             provider={selectedProvider}
             onProviderChange={setSelectedProvider}
             providers={providers}
+            freeOnly={freeOnly}
+            onFreeOnlyChange={setFreeOnly}
             totalCount={models.length}
             filteredCount={filteredModels.length}
           />

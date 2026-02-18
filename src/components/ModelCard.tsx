@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { AIModel } from "@/lib/types";
 import {
   formatContextLength,
@@ -89,6 +89,71 @@ function FreeBadge() {
   );
 }
 
+const MODALITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  text: {
+    label: "Text",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 6.1H3" /><path d="M21 12.1H3" /><path d="M15.1 18H3" />
+      </svg>
+    ),
+    color: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  },
+  image: {
+    label: "Image",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+        <circle cx="9" cy="9" r="2" />
+        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+      </svg>
+    ),
+    color: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  },
+  audio: {
+    label: "Audio",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18V5l12-2v13" />
+        <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+      </svg>
+    ),
+    color: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  },
+  video: {
+    label: "Video",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m22 8-6 4 6 4V8z" /><rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
+      </svg>
+    ),
+    color: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+  },
+};
+
+function ModalityBadges({ modalities }: { modalities: string[] }) {
+  if (!modalities || modalities.length === 0) return null;
+  const normalized = modalities.map((m) => m.toLowerCase().split("+")[0].trim());
+  const unique = Array.from(new Set(normalized));
+  return (
+    <div className="flex flex-wrap gap-1">
+      {unique.map((mod) => {
+        const cfg = MODALITY_CONFIG[mod];
+        if (!cfg) return null;
+        return (
+          <span
+            key={mod}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${cfg.color}`}
+          >
+            {cfg.icon}
+            {cfg.label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function StatPill({
   label,
   value,
@@ -145,6 +210,7 @@ export function ModelCard({ model, view }: ModelCardProps) {
             </h3>
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
+            <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
           {model.description && (
             <p className="text-xs text-zinc-500 line-clamp-2 mb-2.5 leading-relaxed">
@@ -157,17 +223,18 @@ export function ModelCard({ model, view }: ModelCardProps) {
               <span className="text-zinc-300 font-medium">{contextLength}</span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-600">Input:</span>
+              <span className="text-zinc-600">In:</span>
               <span className={`font-medium ${free ? "text-emerald-400" : "text-zinc-300"}`}>
                 {promptPrice}
               </span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-600">Output:</span>
+              <span className="text-zinc-600">Out:</span>
               <span className={`font-medium ${free ? "text-emerald-400" : "text-zinc-300"}`}>
                 {completionPrice}
               </span>
             </span>
+            <span className="text-zinc-600 text-[10px]">per 1M tokens</span>
             <span className="flex items-center gap-1 font-mono text-zinc-600 text-[11px]">
               {model.id}
             </span>
@@ -199,6 +266,7 @@ export function ModelCard({ model, view }: ModelCardProps) {
           <div className="flex flex-wrap gap-1.5">
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
+            <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
         </div>
       </div>
@@ -214,15 +282,10 @@ export function ModelCard({ model, view }: ModelCardProps) {
       <div className="mt-auto">
         <div className="grid grid-cols-3 gap-2 mb-3">
           <StatPill label="Context" value={contextLength} />
-          <StatPill
-            label="Input"
-            value={promptPrice}
-          />
-          <StatPill
-            label="Output"
-            value={completionPrice}
-          />
+          <StatPill label="In" value={promptPrice} />
+          <StatPill label="Out" value={completionPrice} />
         </div>
+        <p className="text-[10px] text-zinc-600 text-center mb-2 -mt-1">per 1M tokens</p>
 
         {/* Model ID + Copy */}
         <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/40 border border-zinc-700/50">
