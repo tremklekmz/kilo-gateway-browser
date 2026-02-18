@@ -25,6 +25,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Price display: removed "/M" suffix from formatPrice (per 1M tokens is standard), added "per 1M tokens" note below stat pills
 - [x] Free-only filter toggle in SearchFilter + ModelsBrowser (neon-green radio-style button)
 - [x] Modality capability badges on ModelCard (Text/Image/Audio/Video) from architecture.input_modalities, with colored icons
+- [x] Created comprehensive README.md with project overview and setup instructions
 
 ## Current Structure
 
@@ -33,6 +34,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 | `src/app/page.tsx` | Home page | ✅ Ready |
 | `src/app/layout.tsx` | Root layout | ✅ Ready |
 | `src/app/globals.css` | Global styles | ✅ Ready |
+| `README.md` | Project documentation | ✅ Ready |
 | `.kilocode/` | AI context & recipes | ✅ Ready |
 
 ## Current Focus
@@ -95,4 +97,5 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-02-18 | Created README.md and updated memory bank |
 | Initial | Template created with base setup |
