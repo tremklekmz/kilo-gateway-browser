@@ -101,8 +101,8 @@ export function formatContextLength(length: number): string {
 export function formatPrice(price: string): string {
   const num = parseFloat(price);
   if (num === 0) return "Free";
-  if (num < 0.000001) return `$${(num * 1_000_000).toFixed(4)}/M`;
-  return `$${(num * 1_000_000).toFixed(2)}/M`;
+  if (num < 0.000001) return `$${(num * 1_000_000).toFixed(4)}`;
+  return `$${(num * 1_000_000).toFixed(2)}`;
 }
 
 export function getUniqueProviders(models: AIModel[]): string[] {

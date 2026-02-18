@@ -8,6 +8,8 @@ interface SearchFilterProps {
   provider: string;
   onProviderChange: (value: string) => void;
   providers: string[];
+  freeOnly: boolean;
+  onFreeOnlyChange: (value: boolean) => void;
   totalCount: number;
   filteredCount: number;
 }
@@ -76,13 +78,15 @@ export function SearchFilter({
   provider,
   onProviderChange,
   providers,
+  freeOnly,
+  onFreeOnlyChange,
   totalCount,
   filteredCount,
 }: SearchFilterProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
+    <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
       {/* Search */}
-      <div className="relative flex-1">
+      <div className="relative flex-1 min-w-0">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <SearchIcon />
         </div>
@@ -104,7 +108,7 @@ export function SearchFilter({
       </div>
 
       {/* Provider filter */}
-      <div className="relative sm:w-52">
+      <div className="relative sm:w-48">
         <select
           value={provider}
           onChange={(e) => onProviderChange(e.target.value)}
@@ -121,6 +125,27 @@ export function SearchFilter({
           <ChevronIcon />
         </div>
       </div>
+
+      {/* Free only toggle */}
+      <button
+        onClick={() => onFreeOnlyChange(!freeOnly)}
+        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 whitespace-nowrap ${
+          freeOnly
+            ? "bg-neon-green/10 text-neon-green border-neon-green/30"
+            : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
+        }`}
+      >
+        <span
+          className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-colors ${
+            freeOnly ? "border-neon-green bg-neon-green/20" : "border-zinc-600"
+          }`}
+        >
+          {freeOnly && (
+            <span className="w-1.5 h-1.5 rounded-full bg-neon-green block" />
+          )}
+        </span>
+        Free only
+      </button>
 
       {/* Count */}
       <div className="flex items-center justify-center sm:justify-start px-3 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-500 whitespace-nowrap">

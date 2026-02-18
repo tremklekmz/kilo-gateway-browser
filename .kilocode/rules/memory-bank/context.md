@@ -22,6 +22,9 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] ModelsBrowser orchestrator component with error state and empty state
 - [x] Dark mode globals.css with zinc/slate palette, custom scrollbar, neon-green/violet theme vars
 - [x] Updated layout.tsx metadata for Kilo Gateway AI Model Explorer
+- [x] Price display: removed "/M" suffix from formatPrice (per 1M tokens is standard), added "per 1M tokens" note below stat pills
+- [x] Free-only filter toggle in SearchFilter + ModelsBrowser (neon-green radio-style button)
+- [x] Modality capability badges on ModelCard (Text/Image/Audio/Video) from architecture.input_modalities, with colored icons
 
 ## Current Structure
 
