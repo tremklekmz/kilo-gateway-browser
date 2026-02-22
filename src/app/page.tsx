@@ -1,7 +1,6 @@
 import { ModelsBrowser } from "@/components/ModelsBrowser";
 import { AIModel, ModelsResponse } from "@/lib/types";
-
-const MODELS_API_URL = "https://api.kilo.ai/api/gateway/models";
+import { MODELS_API_URL } from "@/lib/constants";
 
 async function fetchModelsServer(): Promise<AIModel[] | null> {
   try {

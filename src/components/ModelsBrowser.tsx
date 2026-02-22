@@ -7,8 +7,7 @@ import { ModelCard } from "./ModelCard";
 import { SearchFilter } from "./SearchFilter";
 import { ViewToggle } from "./ViewToggle";
 import { SkeletonGrid } from "./SkeletonCard";
-
-const MODELS_API_URL = "https://api.kilo.ai/api/gateway/models";
+import { MODELS_API_URL } from "@/lib/constants";
 
 interface ModelsBrowserProps {
   /** Models pre-fetched on the server. When provided, no client-side fetch is needed.
