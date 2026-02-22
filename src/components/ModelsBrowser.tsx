@@ -7,6 +7,13 @@ import { ModelCard } from "./ModelCard";
 import { SearchFilter } from "./SearchFilter";
 import { ViewToggle } from "./ViewToggle";
 import { SkeletonGrid } from "./SkeletonCard";
+import { MODELS_API_URL } from "@/lib/constants";
+
+interface ModelsBrowserProps {
+  /** Models pre-fetched on the server. When provided, no client-side fetch is needed.
+   *  When omitted (e.g. server fetch failed), the component will fetch on the client instead. */
+  initialModels?: AIModel[];
+}
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -71,9 +78,14 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
   );
 }
 
-export function ModelsBrowser() {
-  const [models, setModels] = useState<AIModel[]>([]);
-  const [loading, setLoading] = useState(true);
+export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
+  // If initialModels were provided by the server, start with them (no loading needed).
+  // If the server fetch failed, start in loading state so the client-side fallback runs.
+  // If neither prop is provided (legacy / direct usage), also start in loading state.
+  const hasServerData = initialModels !== undefined;
+
+  const [models, setModels] = useState<AIModel[]>(initialModels ?? []);
+  const [loading, setLoading] = useState(!hasServerData);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
@@ -84,7 +96,7 @@ export function ModelsBrowser() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("https://api.kilo.ai/api/gateway/models");
+      const res = await fetch(MODELS_API_URL);
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
@@ -102,7 +114,12 @@ export function ModelsBrowser() {
   };
 
   useEffect(() => {
-    fetchModels();
+    // Only fetch on the client if we don't already have server-provided data.
+    // This covers both the serverFetchFailed case and the no-props (legacy) case.
+    if (!hasServerData) {
+      fetchModels();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const providers = useMemo(() => getUniqueProviders(models), [models]);
