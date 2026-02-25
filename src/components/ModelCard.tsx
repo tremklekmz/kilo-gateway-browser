@@ -191,6 +191,11 @@ function ExpandableDescription({
     if (!el) return;
 
     const measure = () => {
+      // When already expanded the <p> has no -webkit-box display, so clientHeight
+      // equals scrollHeight and would incorrectly set isClamped(false), hiding
+      // the "Show less" button. Skip measurement while expanded — it's clamped by
+      // definition since the user had to click "Show more" to get here.
+      if (expanded) return;
       // scrollHeight is always the full content height, unaffected by line-clamp
       const fullHeight = el.scrollHeight;
       el.style.webkitLineClamp = String(lineClamp);
@@ -204,7 +209,7 @@ function ExpandableDescription({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [text, lineClamp]);
+  }, [text, lineClamp, expanded]);
 
   return (
     <div>
