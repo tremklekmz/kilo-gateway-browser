@@ -27,6 +27,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Modality capability badges on ModelCard (Text/Image/Audio/Video) from architecture.input_modalities, with colored icons
 - [x] Created comprehensive README.md with project overview and setup instructions
 - [x] Client-side fallback fetch for models API — page.tsx now does a server-side fetch (with 60s revalidation); if it fails, ModelsBrowser receives no initialModels and triggers a client-side fetch via useEffect as fallback; skeleton loader shown during client fetch; error state shown only if both fetches fail
+- [x] Expandable description in ModelCard — added `ExpandableDescription` component that detects actual DOM overflow and shows a "Show more / Show less" inline toggle; works in both grid (3-line clamp) and list (2-line clamp) views; works on PC and mobile
 
 ## Current Structure
 
@@ -98,6 +99,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-02-25 | Added ExpandableDescription component to ModelCard — detects DOM overflow, shows Show more/less toggle for both grid and list views |
 | 2026-02-22 | Added client-side fallback fetch: page.tsx does server-side fetch, ModelsBrowser falls back to client fetch if server fetch fails |
 | 2026-02-18 | Created README.md and updated memory bank |
 | Initial | Template created with base setup |
