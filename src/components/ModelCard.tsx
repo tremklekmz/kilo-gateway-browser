@@ -191,18 +191,30 @@ function ExpandableDescription({
     if (!el) return;
 
     const measure = () => {
-      // When already expanded the <p> has no -webkit-box display, so clientHeight
-      // equals scrollHeight and would incorrectly set isClamped(false), hiding
-      // the "Show less" button. Skip measurement while expanded — it's clamped by
-      // definition since the user had to click "Show more" to get here.
       if (expanded) return;
-      // scrollHeight is always the full content height, unaffected by line-clamp
+
+      const prevDisplay = el.style.display;
+      const prevOrient = el.style.webkitBoxOrient;
+      const prevClamp = el.style.webkitLineClamp;
+      const prevOverflow = el.style.overflow;
+
+      el.style.display = "block";
+      el.style.webkitLineClamp = "unset";
+      el.style.overflow = "visible";
       const fullHeight = el.scrollHeight;
+
+      el.style.display = "-webkit-box";
+      el.style.webkitBoxOrient = "vertical";
       el.style.webkitLineClamp = String(lineClamp);
+      el.style.overflow = "hidden";
       const clampedHeight = el.clientHeight;
+
       setIsClamped(fullHeight > clampedHeight);
-      // Let inline style on the <p> control clamping instead
-      el.style.webkitLineClamp = "";
+
+      el.style.display = prevDisplay;
+      el.style.webkitBoxOrient = prevOrient;
+      el.style.webkitLineClamp = prevClamp;
+      el.style.overflow = prevOverflow;
     };
 
     measure();
@@ -350,7 +362,7 @@ export function ModelCard({ model, view }: ModelCardProps) {
         <div className="mb-4 flex-1">
           <ExpandableDescription
             text={model.description}
-            lineClamp={3}
+            lineClamp={2}
             className="text-xs text-zinc-500 leading-relaxed"
           />
         </div>
