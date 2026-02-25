@@ -189,14 +189,21 @@ function ExpandableDescription({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Temporarily remove clamp to measure full height
-    el.style.webkitLineClamp = "unset";
-    const fullHeight = el.scrollHeight;
-    el.style.webkitLineClamp = String(lineClamp);
-    const clampedHeight = el.clientHeight;
-    setIsClamped(fullHeight > clampedHeight);
-    // Restore inline style override (let className control it)
-    el.style.webkitLineClamp = "";
+
+    const measure = () => {
+      // scrollHeight is always the full content height, unaffected by line-clamp
+      const fullHeight = el.scrollHeight;
+      el.style.webkitLineClamp = String(lineClamp);
+      const clampedHeight = el.clientHeight;
+      setIsClamped(fullHeight > clampedHeight);
+      // Let inline style on the <p> control clamping instead
+      el.style.webkitLineClamp = "";
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [text, lineClamp]);
 
   return (
@@ -223,6 +230,7 @@ function ExpandableDescription({
             e.stopPropagation();
             setExpanded((v) => !v);
           }}
+          aria-expanded={expanded}
           className="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium"
         >
           {expanded ? "Show less" : "Show more"}
