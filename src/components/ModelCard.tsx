@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { AIModel } from "@/lib/types";
 import {
   formatContextLength,
@@ -173,6 +173,78 @@ function StatPill({
   );
 }
 
+function ExpandableDescription({
+  text,
+  lineClamp,
+  className,
+}: {
+  text: string;
+  lineClamp: number;
+  className?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const measure = () => {
+      // When already expanded the <p> has no -webkit-box display, so clientHeight
+      // equals scrollHeight and would incorrectly set isClamped(false), hiding
+      // the "Show less" button. Skip measurement while expanded — it's clamped by
+      // definition since the user had to click "Show more" to get here.
+      if (expanded) return;
+      // scrollHeight is always the full content height, unaffected by line-clamp
+      const fullHeight = el.scrollHeight;
+      el.style.webkitLineClamp = String(lineClamp);
+      const clampedHeight = el.clientHeight;
+      setIsClamped(fullHeight > clampedHeight);
+      // Let inline style on the <p> control clamping instead
+      el.style.webkitLineClamp = "";
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text, lineClamp, expanded]);
+
+  return (
+    <div>
+      <p
+        ref={ref}
+        style={
+          expanded
+            ? undefined
+            : {
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: lineClamp,
+                overflow: "hidden",
+              }
+        }
+        className={className}
+      >
+        {text}
+      </p>
+      {isClamped && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          aria-expanded={expanded}
+          className="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ModelCard({ model, view }: ModelCardProps) {
   const [copied, setCopied] = useState(false);
   const provider = getProviderFromId(model.id);
@@ -213,9 +285,11 @@ export function ModelCard({ model, view }: ModelCardProps) {
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
           {model.description && (
-            <p className="text-xs text-zinc-500 line-clamp-2 mb-2.5 leading-relaxed">
-              {model.description}
-            </p>
+            <ExpandableDescription
+              text={model.description}
+              lineClamp={2}
+              className="text-xs text-zinc-500 leading-relaxed mb-2.5"
+            />
           )}
           <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
@@ -273,9 +347,13 @@ export function ModelCard({ model, view }: ModelCardProps) {
 
       {/* Description */}
       {model.description && (
-        <p className="text-xs text-zinc-500 line-clamp-3 mb-4 leading-relaxed flex-1">
-          {model.description}
-        </p>
+        <div className="mb-4 flex-1">
+          <ExpandableDescription
+            text={model.description}
+            lineClamp={3}
+            className="text-xs text-zinc-500 leading-relaxed"
+          />
+        </div>
       )}
 
       {/* Stats */}
