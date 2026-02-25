@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { AIModel } from "@/lib/types";
 import {
   formatContextLength,
@@ -173,6 +173,65 @@ function StatPill({
   );
 }
 
+function ExpandableDescription({
+  text,
+  lineClamp,
+  className,
+}: {
+  text: string;
+  lineClamp: number;
+  className?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Temporarily remove clamp to measure full height
+    el.style.webkitLineClamp = "unset";
+    const fullHeight = el.scrollHeight;
+    el.style.webkitLineClamp = String(lineClamp);
+    const clampedHeight = el.clientHeight;
+    setIsClamped(fullHeight > clampedHeight);
+    // Restore inline style override (let className control it)
+    el.style.webkitLineClamp = "";
+  }, [text, lineClamp]);
+
+  return (
+    <div>
+      <p
+        ref={ref}
+        style={
+          expanded
+            ? undefined
+            : {
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: lineClamp,
+                overflow: "hidden",
+              }
+        }
+        className={className}
+      >
+        {text}
+      </p>
+      {isClamped && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          className="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function ModelCard({ model, view }: ModelCardProps) {
   const [copied, setCopied] = useState(false);
   const provider = getProviderFromId(model.id);
@@ -213,9 +272,11 @@ export function ModelCard({ model, view }: ModelCardProps) {
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
           {model.description && (
-            <p className="text-xs text-zinc-500 line-clamp-2 mb-2.5 leading-relaxed">
-              {model.description}
-            </p>
+            <ExpandableDescription
+              text={model.description}
+              lineClamp={2}
+              className="text-xs text-zinc-500 leading-relaxed mb-2.5"
+            />
           )}
           <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
@@ -273,9 +334,13 @@ export function ModelCard({ model, view }: ModelCardProps) {
 
       {/* Description */}
       {model.description && (
-        <p className="text-xs text-zinc-500 line-clamp-3 mb-4 leading-relaxed flex-1">
-          {model.description}
-        </p>
+        <div className="mb-4 flex-1">
+          <ExpandableDescription
+            text={model.description}
+            lineClamp={3}
+            className="text-xs text-zinc-500 leading-relaxed"
+          />
+        </div>
       )}
 
       {/* Stats */}
