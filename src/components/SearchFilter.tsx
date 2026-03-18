@@ -10,6 +10,8 @@ interface SearchFilterProps {
   providers: string[];
   freeOnly: boolean;
   onFreeOnlyChange: (value: boolean) => void;
+  sortBy: "default" | "newest" | "oldest";
+  onSortByChange: (value: "default" | "newest" | "oldest") => void;
   totalCount: number;
   filteredCount: number;
 }
@@ -80,6 +82,8 @@ export function SearchFilter({
   providers,
   freeOnly,
   onFreeOnlyChange,
+  sortBy,
+  onSortByChange,
   totalCount,
   filteredCount,
 }: SearchFilterProps) {
@@ -120,6 +124,22 @@ export function SearchFilter({
               {formatProviderName(p)}
             </option>
           ))}
+        </select>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          <ChevronIcon />
+        </div>
+      </div>
+
+      {/* Sort by */}
+      <div className="relative sm:w-44">
+        <select
+          value={sortBy}
+          onChange={(e) => onSortByChange(e.target.value as "default" | "newest" | "oldest")}
+          className="w-full appearance-none pl-3 pr-8 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200 cursor-pointer"
+        >
+          <option value="default">Default order</option>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
         </select>
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <ChevronIcon />
