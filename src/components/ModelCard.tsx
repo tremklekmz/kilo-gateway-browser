@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { AIModel } from "@/lib/types";
 import {
   formatContextLength,
+  formatCreatedDate,
   formatPrice,
   formatProviderName,
   getProviderFromId,
@@ -283,6 +284,7 @@ export function ModelCard({ model, view }: ModelCardProps) {
   const promptPrice = formatPrice(model.pricing.prompt);
   const completionPrice = formatPrice(model.pricing.completion);
   const contextLength = formatContextLength(model.context_length);
+  const createdDate = formatCreatedDate(model.created);
 
   if (view === "list") {
     return (
@@ -324,6 +326,14 @@ export function ModelCard({ model, view }: ModelCardProps) {
             <span className="flex items-center gap-1 font-mono text-zinc-600 text-[11px]">
               {model.id}
             </span>
+            {createdDate && (
+              <span className="flex items-center gap-1 text-zinc-600 text-[11px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+                </svg>
+                {createdDate}
+              </span>
+            )}
           </div>
         </div>
         <button
@@ -376,6 +386,16 @@ export function ModelCard({ model, view }: ModelCardProps) {
           <StatPill label="Out" value={completionPrice} />
         </div>
         <p className="text-[10px] text-zinc-600 text-center mb-2 -mt-1">per 1M tokens</p>
+
+        {/* Created date */}
+        {createdDate && (
+          <p className="flex items-center justify-center gap-1 text-[10px] text-zinc-600 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+            </svg>
+            {createdDate}
+          </p>
+        )}
 
         {/* Model ID + Copy */}
         <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/40 border border-zinc-700/50">

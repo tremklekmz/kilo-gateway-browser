@@ -119,3 +119,18 @@ export function isFreeModel(model: AIModel): boolean {
     parseFloat(model.pricing.completion) === 0
   );
 }
+
+/**
+ * Formats a Unix timestamp (seconds) into a human-readable date string.
+ * Returns null if the timestamp is 0 (used for meta models / routers).
+ * Format: "15 Jan 2024" — unambiguous, never US month/day/year.
+ */
+export function formatCreatedDate(timestamp: number): string | null {
+  if (!timestamp) return null;
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}

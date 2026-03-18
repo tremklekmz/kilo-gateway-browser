@@ -90,6 +90,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [search, setSearch] = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
   const [freeOnly, setFreeOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">("default");
   const [view, setView] = useState<"grid" | "list">("grid");
 
   const fetchModels = async () => {
@@ -125,7 +126,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const providers = useMemo(() => getUniqueProviders(models), [models]);
 
   const filteredModels = useMemo(() => {
-    return models.filter((model) => {
+    const filtered = models.filter((model) => {
       const searchLower = search.toLowerCase();
       const matchesSearch =
         !search ||
@@ -141,7 +142,15 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
 
       return matchesSearch && matchesProvider && matchesFree;
     });
-  }, [models, search, selectedProvider, freeOnly]);
+
+    if (sortBy === "newest") {
+      return [...filtered].sort((a, b) => b.created - a.created);
+    }
+    if (sortBy === "oldest") {
+      return [...filtered].sort((a, b) => a.created - b.created);
+    }
+    return filtered;
+  }, [models, search, selectedProvider, freeOnly, sortBy]);
 
   const hasFilters = !!search || !!selectedProvider || freeOnly;
 
@@ -205,6 +214,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             providers={providers}
             freeOnly={freeOnly}
             onFreeOnlyChange={setFreeOnly}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
             totalCount={models.length}
             filteredCount={filteredModels.length}
           />
