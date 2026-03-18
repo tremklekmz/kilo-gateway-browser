@@ -28,6 +28,8 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Created comprehensive README.md with project overview and setup instructions
 - [x] Client-side fallback fetch for models API — page.tsx now does a server-side fetch (with 60s revalidation); if it fails, ModelsBrowser receives no initialModels and triggers a client-side fetch via useEffect as fallback; skeleton loader shown during client fetch; error state shown only if both fetches fail
 - [x] Expandable description in ModelCard — `ExpandableDescription` component detects actual DOM overflow and shows a "Show more / Show less" inline toggle; 2-line clamp in both grid and list views; "Show more" button only visible when text overflows
+- [x] Created date display on ModelCard — shows "15 Jan 2024" format (en-GB, unambiguous) in grid and list views with calendar icon; skipped when `created === 0` (meta models / routers); `formatCreatedDate()` added to utils.ts
+- [x] Sort by date — SearchFilter has a "Default order / Newest first / Oldest first" dropdown; ModelsBrowser sorts filteredModels accordingly
 
 ## Current Structure
 
@@ -99,6 +101,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-03-18 | Added created date to ModelCard (en-GB format, hidden for timestamp=0); added sort-by-date dropdown (Newest/Oldest first) to SearchFilter + ModelsBrowser |
 | 2026-02-25 | Fixed ExpandableDescription overflow detection — measure function now temporarily removes clamp styles before reading scrollHeight for accurate comparison; changed grid view from 3-line to 2-line clamp |
 | 2026-02-22 | Added client-side fallback fetch: page.tsx does server-side fetch, ModelsBrowser falls back to client fetch if server fetch fails |
 | 2026-02-18 | Created README.md and updated memory bank |
