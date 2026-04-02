@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { AIModel, ModelsResponse } from "@/lib/types";
 import { getProviderFromId, getUniqueProviders, isFreeModel } from "@/lib/utils";
 import { ModelCard } from "./ModelCard";
 import { SearchFilter } from "./SearchFilter";
 import { ViewToggle } from "./ViewToggle";
 import { SkeletonGrid } from "./SkeletonCard";
+import { Pagination } from "./Pagination";
 import { MODELS_API_URL } from "@/lib/constants";
+
+const PAGE_SIZE = 40;
 
 interface ModelsBrowserProps {
   /** Models pre-fetched on the server. When provided, no client-side fetch is needed.
@@ -92,6 +95,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [freeOnly, setFreeOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">("default");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const fetchModels = async () => {
     setLoading(true);
@@ -153,6 +157,21 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   }, [models, search, selectedProvider, freeOnly, sortBy]);
 
   const hasFilters = !!search || !!selectedProvider || freeOnly;
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, selectedProvider, freeOnly, sortBy]);
+
+  const visibleModels = useMemo(
+    () => filteredModels.slice(0, visibleCount),
+    [filteredModels, visibleCount]
+  );
+
+  const hasMore = visibleCount < filteredModels.length;
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => prev + PAGE_SIZE);
+  }, []);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -231,17 +250,20 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         ) : filteredModels.length === 0 ? (
           <EmptyState hasFilters={hasFilters} />
         ) : (
-          <div
-            className={
-              view === "grid"
-                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                : "flex flex-col gap-3"
-            }
-          >
-            {filteredModels.map((model) => (
-              <ModelCard key={model.id} model={model} view={view} />
-            ))}
-          </div>
+          <>
+            <div
+              className={
+                view === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                  : "flex flex-col gap-3"
+              }
+            >
+              {visibleModels.map((model) => (
+                <ModelCard key={model.id} model={model} view={view} />
+              ))}
+            </div>
+            {hasMore && <Pagination visibleCount={visibleModels.length} totalCount={filteredModels.length} onLoadMore={loadMore} />}
+          </>
         )}
       </main>
 

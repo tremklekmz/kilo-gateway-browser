@@ -30,6 +30,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Expandable description in ModelCard — `ExpandableDescription` component detects actual DOM overflow and shows a "Show more / Show less" inline toggle; 2-line clamp in both grid and list views; "Show more" button only visible when text overflows
 - [x] Created date display on ModelCard — shows "15 Jan 2024" format (en-GB, unambiguous) in grid and list views with calendar icon; skipped when `created === 0` (meta models / routers); `formatCreatedDate()` added to utils.ts
 - [x] Sort by date — SearchFilter has a "Default order / Newest first / Oldest first" dropdown; ModelsBrowser sorts filteredModels accordingly
+- [x] Incremental rendering with "Load More" pagination — ModelsBrowser renders 40 models at a time; "Load more models" button; visibleCount resets when filters change; avoids rendering 300+ DOM nodes simultaneously
 
 ## Current Structure
 
@@ -38,6 +39,15 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 | `src/app/page.tsx` | Home page | ✅ Ready |
 | `src/app/layout.tsx` | Root layout | ✅ Ready |
 | `src/app/globals.css` | Global styles | ✅ Ready |
+| `src/components/ModelsBrowser.tsx` | Main client component with pagination state | ✅ Updated |
+| `src/components/Pagination.tsx` | "Load More" button with visible/total count | ✅ New |
+| `src/components/ModelCard.tsx` | Individual model card | ✅ Ready |
+| `src/components/SearchFilter.tsx` | Search, filter, sort controls | ✅ Ready |
+| `src/components/ViewToggle.tsx` | Grid/list view switcher | ✅ Ready |
+| `src/components/SkeletonCard.tsx` | Loading skeleton placeholders | ✅ Ready |
+| `src/lib/types.ts` | TypeScript interfaces | ✅ Ready |
+| `src/lib/utils.ts` | Helper functions | ✅ Ready |
+| `src/lib/constants.ts` | Constants (API URL) | ✅ Ready |
 | `README.md` | Project documentation | ✅ Ready |
 | `.kilocode/` | AI context & recipes | ✅ Ready |
 
@@ -101,6 +111,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-04-02 | Added incremental rendering ("Load More" pagination) to handle 300+ models; new Pagination component; visibleCount resets on filter change |
 | 2026-03-18 | Added created date to ModelCard (en-GB format, hidden for timestamp=0); added sort-by-date dropdown (Newest/Oldest first) to SearchFilter + ModelsBrowser |
 | 2026-02-25 | Fixed ExpandableDescription overflow detection — measure function now temporarily removes clamp styles before reading scrollHeight for accurate comparison; changed grid view from 3-line to 2-line clamp |
 | 2026-02-22 | Added client-side fallback fetch: page.tsx does server-side fetch, ModelsBrowser falls back to client fetch if server fetch fails |
