@@ -14,6 +14,8 @@ interface SearchFilterProps {
   onSortByChange: (value: "default" | "newest" | "oldest") => void;
   totalCount: number;
   filteredCount: number;
+  hasFilters: boolean;
+  onReset: () => void;
 }
 
 function SearchIcon() {
@@ -74,6 +76,25 @@ function ChevronIcon() {
   );
 }
 
+function ResetIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
 export function SearchFilter({
   search,
   onSearchChange,
@@ -86,6 +107,8 @@ export function SearchFilter({
   onSortByChange,
   totalCount,
   filteredCount,
+  hasFilters,
+  onReset,
 }: SearchFilterProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
@@ -166,6 +189,17 @@ export function SearchFilter({
         </span>
         Free only
       </button>
+
+      {/* Reset button */}
+      {hasFilters && (
+        <button
+          onClick={onReset}
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700 hover:text-zinc-200 transition-all duration-200 whitespace-nowrap"
+        >
+          <ResetIcon />
+          Reset
+        </button>
+      )}
 
       {/* Count */}
       <div className="flex items-center justify-center sm:justify-start px-3 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-500 whitespace-nowrap">

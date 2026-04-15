@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AIModel, ModelsResponse } from "@/lib/types";
 import { getProviderFromId, getUniqueProviders, isFreeModel } from "@/lib/utils";
 import { ModelCard } from "./ModelCard";
@@ -82,6 +83,9 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 }
 
 export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   // If initialModels were provided by the server, start with them (no loading needed).
   // If the server fetch failed, start in loading state so the client-side fallback runs.
   // If neither prop is provided (legacy / direct usage), also start in loading state.
@@ -90,12 +94,65 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [models, setModels] = useState<AIModel[]>(initialModels ?? []);
   const [loading, setLoading] = useState(!hasServerData);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState("");
-  const [freeOnly, setFreeOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">("default");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Initialize filter state from URL params
+  const [search, setSearch] = useState(() => searchParams.get("q") || "");
+  const [selectedProvider, setSelectedProvider] = useState(() => searchParams.get("provider") || "");
+  const [freeOnly, setFreeOnly] = useState(() => searchParams.get("free") === "true");
+  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">(() => {
+    const sort = searchParams.get("sort");
+    if (sort === "newest" || sort === "oldest") return sort;
+    return "default";
+  });
+
+  // Update URL when filters change
+  const updateUrl = useCallback((updates: {
+    q?: string;
+    provider?: string;
+    free?: string;
+    sort?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (updates.q) params.set("q", updates.q);
+    if (updates.provider) params.set("provider", updates.provider);
+    if (updates.free) params.set("free", updates.free);
+    if (updates.sort && updates.sort !== "default") params.set("sort", updates.sort);
+    
+    const queryString = params.toString();
+    router.push(queryString ? `?${queryString}` : "/", { scroll: false });
+  }, [router]);
+
+  // Handlers that also update URL
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    updateUrl({ q: value, provider: selectedProvider, free: freeOnly ? "true" : "", sort: sortBy });
+  };
+
+  const handleProviderChange = (value: string) => {
+    setSelectedProvider(value);
+    updateUrl({ q: search, provider: value, free: freeOnly ? "true" : "", sort: sortBy });
+  };
+
+  const handleFreeOnlyChange = (value: boolean) => {
+    setFreeOnly(value);
+    updateUrl({ q: search, provider: selectedProvider, free: value ? "true" : "", sort: sortBy });
+  };
+
+  const handleSortByChange = (value: "default" | "newest" | "oldest") => {
+    setSortBy(value);
+    updateUrl({ q: search, provider: selectedProvider, free: freeOnly ? "true" : "", sort: value });
+  };
+
+  // Reset all filters
+  const handleReset = () => {
+    setSearch("");
+    setSelectedProvider("");
+    setFreeOnly(false);
+    setSortBy("default");
+    router.push("/", { scroll: false });
+  };
 
   const fetchModels = async () => {
     setLoading(true);
@@ -156,7 +213,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     return filtered;
   }, [models, search, selectedProvider, freeOnly, sortBy]);
 
-  const hasFilters = !!search || !!selectedProvider || freeOnly;
+  const hasFilters = !!search || !!selectedProvider || freeOnly || sortBy !== "default";
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -227,16 +284,18 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         {!loading && !error && (
           <SearchFilter
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
             provider={selectedProvider}
-            onProviderChange={setSelectedProvider}
+            onProviderChange={handleProviderChange}
             providers={providers}
             freeOnly={freeOnly}
-            onFreeOnlyChange={setFreeOnly}
+            onFreeOnlyChange={handleFreeOnlyChange}
             sortBy={sortBy}
-            onSortByChange={setSortBy}
+            onSortByChange={handleSortByChange}
             totalCount={models.length}
             filteredCount={filteredModels.length}
+            hasFilters={hasFilters}
+            onReset={handleReset}
           />
         )}
       </div>
