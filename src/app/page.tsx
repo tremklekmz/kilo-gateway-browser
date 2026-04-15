@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ModelsBrowser } from "@/components/ModelsBrowser";
 import { AIModel, ModelsResponse } from "@/lib/types";
 import { MODELS_API_URL } from "@/lib/constants";
@@ -20,5 +21,9 @@ export default async function Home() {
 
   // If server fetch succeeded, pass models as initial data (no client fetch needed).
   // If it failed (null), render without initialModels so the client-side fallback kicks in.
-  return <ModelsBrowser initialModels={models ?? undefined} />;
+  return (
+    <Suspense fallback={null}>
+      <ModelsBrowser initialModels={models ?? undefined} />
+    </Suspense>
+  );
 }
