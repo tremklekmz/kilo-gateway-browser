@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AIModel, ModelsResponse } from "@/lib/types";
 import { getProviderFromId, getUniqueProviders, isFreeModel } from "@/lib/utils";
 import { ModelCard } from "./ModelCard";
@@ -82,20 +83,62 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 }
 
 export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
-  // If initialModels were provided by the server, start with them (no loading needed).
-  // If the server fetch failed, start in loading state so the client-side fallback runs.
-  // If neither prop is provided (legacy / direct usage), also start in loading state.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const hasServerData = initialModels !== undefined;
 
   const [models, setModels] = useState<AIModel[]>(initialModels ?? []);
   const [loading, setLoading] = useState(!hasServerData);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [selectedProvider, setSelectedProvider] = useState("");
-  const [freeOnly, setFreeOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">("default");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
+  const [selectedProvider, setSelectedProvider] = useState(searchParams.get("provider") || "");
+  const [freeOnly, setFreeOnly] = useState(searchParams.get("free") === "true");
+  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">(
+    (searchParams.get("sort") as "default" | "newest" | "oldest") || "default"
+  );
   const [view, setView] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const updateUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (search) params.set("q", search);
+    if (selectedProvider) params.set("provider", selectedProvider);
+    if (freeOnly) params.set("free", "true");
+    if (sortBy !== "default") params.set("sort", sortBy);
+
+    const queryString = params.toString();
+    const newUrl = queryString ? `?${queryString}` : "/";
+    router.replace(newUrl, { scroll: false });
+  }, [search, selectedProvider, freeOnly, sortBy, router]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    updateUrl();
+  };
+
+  const handleProviderChange = (value: string) => {
+    setSelectedProvider(value);
+    updateUrl();
+  };
+
+  const handleFreeOnlyChange = (value: boolean) => {
+    setFreeOnly(value);
+    updateUrl();
+  };
+
+  const handleSortByChange = (value: "default" | "newest" | "oldest") => {
+    setSortBy(value);
+    updateUrl();
+  };
+
+  const handleReset = () => {
+    setSearch("");
+    setSelectedProvider("");
+    setFreeOnly(false);
+    setSortBy("default");
+    router.replace("/", { scroll: false });
+  };
 
   const fetchModels = async () => {
     setLoading(true);
@@ -156,7 +199,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     return filtered;
   }, [models, search, selectedProvider, freeOnly, sortBy]);
 
-  const hasFilters = !!search || !!selectedProvider || freeOnly;
+  const hasFilters = !!search || !!selectedProvider || freeOnly || sortBy !== "default";
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -227,14 +270,16 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         {!loading && !error && (
           <SearchFilter
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
             provider={selectedProvider}
-            onProviderChange={setSelectedProvider}
+            onProviderChange={handleProviderChange}
             providers={providers}
             freeOnly={freeOnly}
-            onFreeOnlyChange={setFreeOnly}
+            onFreeOnlyChange={handleFreeOnlyChange}
             sortBy={sortBy}
-            onSortByChange={setSortBy}
+            onSortByChange={handleSortByChange}
+            hasFilters={hasFilters}
+            onReset={handleReset}
             totalCount={models.length}
             filteredCount={filteredModels.length}
           />
