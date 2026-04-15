@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AIModel, ModelsResponse } from "@/lib/types";
 import { getProviderFromId, getUniqueProviders, isFreeModel } from "@/lib/utils";
@@ -85,6 +85,7 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [, startTransition] = useTransition();
 
   const hasServerData = initialModels !== undefined;
 
@@ -119,8 +120,10 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
 
     const queryString = params.toString();
     const newUrl = queryString ? `?${queryString}` : "/";
-    router.replace(newUrl, { scroll: false });
-  }, [search, selectedProvider, freeOnly, sortBy, router]);
+    startTransition(() => {
+      router.replace(newUrl, { scroll: false });
+    });
+  }, [search, selectedProvider, freeOnly, sortBy, router, startTransition]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -147,7 +150,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setSelectedProvider("");
     setFreeOnly(false);
     setSortBy("default");
-    router.replace("/", { scroll: false });
+    startTransition(() => {
+      router.replace("/", { scroll: false });
+    });
   };
 
   const fetchModels = async () => {
@@ -181,11 +186,15 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         ? rawSort
         : "default";
 
-    if (search !== urlSearch) setSearch(urlSearch);
-    if (selectedProvider !== urlProvider) setSelectedProvider(urlProvider);
-    if (freeOnly !== urlFreeOnly) setFreeOnly(urlFreeOnly);
-    if (sortBy !== urlSortBy) setSortBy(urlSortBy);
-  }, [searchParams, search, selectedProvider, freeOnly, sortBy]);
+    setSearch(urlSearch);
+    setSelectedProvider(urlProvider);
+    setFreeOnly(urlFreeOnly);
+    setSortBy(urlSortBy);
+    // Only re-sync when the URL actually changes (e.g. browser back/forward).
+    // Omitting the state variables from deps prevents a feedback loop where
+    // setState → re-render → effect re-runs → setState again causes blinking.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     // Only fetch on the client if we don't already have server-provided data.
