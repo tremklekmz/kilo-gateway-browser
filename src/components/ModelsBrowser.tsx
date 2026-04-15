@@ -100,12 +100,22 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  const updateUrl = useCallback(() => {
+  const updateUrl = useCallback((next?: {
+    search?: string;
+    selectedProvider?: string;
+    freeOnly?: boolean;
+    sortBy?: "default" | "newest" | "oldest";
+  }) => {
+    const nextSearch = next?.search ?? search;
+    const nextProvider = next?.selectedProvider ?? selectedProvider;
+    const nextFreeOnly = next?.freeOnly ?? freeOnly;
+    const nextSortBy = next?.sortBy ?? sortBy;
+
     const params = new URLSearchParams();
-    if (search) params.set("q", search);
-    if (selectedProvider) params.set("provider", selectedProvider);
-    if (freeOnly) params.set("free", "true");
-    if (sortBy !== "default") params.set("sort", sortBy);
+    if (nextSearch) params.set("q", nextSearch);
+    if (nextProvider) params.set("provider", nextProvider);
+    if (nextFreeOnly) params.set("free", "true");
+    if (nextSortBy !== "default") params.set("sort", nextSortBy);
 
     const queryString = params.toString();
     const newUrl = queryString ? `?${queryString}` : "/";
@@ -114,22 +124,22 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    updateUrl();
+    updateUrl({ search: value });
   };
 
   const handleProviderChange = (value: string) => {
     setSelectedProvider(value);
-    updateUrl();
+    updateUrl({ selectedProvider: value });
   };
 
   const handleFreeOnlyChange = (value: boolean) => {
     setFreeOnly(value);
-    updateUrl();
+    updateUrl({ freeOnly: value });
   };
 
   const handleSortByChange = (value: "default" | "newest" | "oldest") => {
     setSortBy(value);
-    updateUrl();
+    updateUrl({ sortBy: value });
   };
 
   const handleReset = () => {
@@ -160,6 +170,22 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const urlSearch = searchParams.get("q") || "";
+    const urlProvider = searchParams.get("provider") || "";
+    const urlFreeOnly = searchParams.get("free") === "true";
+    const rawSort = searchParams.get("sort");
+    const urlSortBy =
+      rawSort === "newest" || rawSort === "oldest" || rawSort === "default"
+        ? rawSort
+        : "default";
+
+    if (search !== urlSearch) setSearch(urlSearch);
+    if (selectedProvider !== urlProvider) setSelectedProvider(urlProvider);
+    if (freeOnly !== urlFreeOnly) setFreeOnly(urlFreeOnly);
+    if (sortBy !== urlSortBy) setSortBy(urlSortBy);
+  }, [searchParams, search, selectedProvider, freeOnly, sortBy]);
 
   useEffect(() => {
     // Only fetch on the client if we don't already have server-provided data.

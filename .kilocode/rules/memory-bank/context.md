@@ -32,6 +32,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Sort by date — SearchFilter has a "Default order / Newest first / Oldest first" dropdown; ModelsBrowser sorts filteredModels accordingly
 - [x] Incremental rendering with "Load More" pagination — ModelsBrowser renders 40 models at a time; "Load more models" button; visibleCount resets when filters change; avoids rendering 300+ DOM nodes simultaneously
 - [x] URL-based filter persistence — filter state reads from URL params (?q=, ?provider=, ?free=true, ?sort=); added updateUrl() to sync state to URL; reset button clears all filters and navigates to "/"
+- [x] Fixed URL/state synchronization in ModelsBrowser — updateUrl now receives next values to avoid stale query params; added searchParams-to-state sync effect for browser navigation and external URL updates
 
 ## Current Structure
 
@@ -112,6 +113,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-04-15 | Fixed URL/state sync bugs in ModelsBrowser: prevented stale URL updates after setState and added resync from searchParams on URL changes |
 | 2026-04-15 | Added URL-based filter persistence (?q=, ?provider=, ?free=true, ?sort=); added reset button to clear all filters |
 | 2026-04-02 | Added incremental rendering ("Load More" pagination) to handle 300+ models; new Pagination component; visibleCount resets on filter change |
 | 2026-03-18 | Added created date to ModelCard (en-GB format, hidden for timestamp=0); added sort-by-date dropdown (Newest/Oldest first) to SearchFilter + ModelsBrowser |
