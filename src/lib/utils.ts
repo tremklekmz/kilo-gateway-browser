@@ -1,5 +1,31 @@
 import { AIModel } from "./types";
 
+/**
+ * Cost fields normalized to $/1M tokens.
+ */
+export interface ModelCostInfo {
+  input: number;
+  output: number;
+  cacheRead?: number | null;
+}
+
+/**
+ * Calculates a weighted average price per 1M tokens.
+ *
+ * When cacheRead is present and > 0:
+ *   avg = (cacheRead × 0.7) + (input × 0.2) + (output × 0.1)
+ *
+ * Otherwise:
+ *   avg = (input × 0.9) + (output × 0.1)
+ */
+export function calculateAveragePrice(cost: ModelCostInfo): number {
+  const cacheRead = cost.cacheRead ?? 0;
+  if (cacheRead > 0) {
+    return cacheRead * 0.7 + cost.input * 0.2 + cost.output * 0.1;
+  }
+  return cost.input * 0.9 + cost.output * 0.1;
+}
+
 export function getProviderFromId(modelId: string): string {
   const parts = modelId.split("/");
   if (parts.length >= 2) {
