@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AIModel, ModelsResponse } from "@/lib/types";
-import { getProviderFromId, getUniqueProviders, isFreeModel } from "@/lib/utils";
+import { getProviderFromId, getUniqueProviders, isFreeModel, calculateAveragePrice } from "@/lib/utils";
 import { ModelCard } from "./ModelCard";
 import { SearchFilter } from "./SearchFilter";
 import { ViewToggle } from "./ViewToggle";
@@ -95,8 +95,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [selectedProvider, setSelectedProvider] = useState(searchParams.get("provider") || "");
   const [freeOnly, setFreeOnly] = useState(searchParams.get("free") === "true");
-  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest">(
-    (searchParams.get("sort") as "default" | "newest" | "oldest") || "default"
+  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest" | "price-asc" | "price-desc">(
+    (searchParams.get("sort") as "default" | "newest" | "oldest" | "price-asc" | "price-desc") || "default"
   );
   const [view, setView] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -105,7 +105,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     search?: string;
     selectedProvider?: string;
     freeOnly?: boolean;
-    sortBy?: "default" | "newest" | "oldest";
+    sortBy?: "default" | "newest" | "oldest" | "price-asc" | "price-desc";
   }) => {
     const nextSearch = next?.search ?? search;
     const nextProvider = next?.selectedProvider ?? selectedProvider;
@@ -140,7 +140,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     updateUrl({ freeOnly: value });
   };
 
-  const handleSortByChange = (value: "default" | "newest" | "oldest") => {
+  const handleSortByChange = (value: "default" | "newest" | "oldest" | "price-asc" | "price-desc") => {
     setSortBy(value);
     updateUrl({ sortBy: value });
   };
@@ -182,7 +182,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const urlFreeOnly = searchParams.get("free") === "true";
     const rawSort = searchParams.get("sort");
     const urlSortBy =
-      rawSort === "newest" || rawSort === "oldest" || rawSort === "default"
+      rawSort === "newest" || rawSort === "oldest" || rawSort === "default" ||
+      rawSort === "price-asc" || rawSort === "price-desc"
         ? rawSort
         : "default";
 
@@ -230,6 +231,22 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     }
     if (sortBy === "oldest") {
       return [...filtered].sort((a, b) => a.created - b.created);
+    }
+    if (sortBy === "price-asc" || sortBy === "price-desc") {
+      const getAvgPrice = (model: AIModel) =>
+        calculateAveragePrice({
+          input: parseFloat(model.pricing.prompt),
+          output: parseFloat(model.pricing.completion),
+          cacheRead:
+            model.pricing.input_cache_read != null
+              ? parseFloat(model.pricing.input_cache_read)
+              : null,
+        });
+      return [...filtered].sort((a, b) =>
+        sortBy === "price-asc"
+          ? getAvgPrice(a) - getAvgPrice(b)
+          : getAvgPrice(b) - getAvgPrice(a)
+      );
     }
     return filtered;
   }, [models, search, selectedProvider, freeOnly, sortBy]);
