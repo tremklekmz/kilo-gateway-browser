@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { AIModel } from "@/lib/types";
 import {
+  calculateAveragePrice,
   formatContextLength,
   formatCreatedDate,
   formatPrice,
@@ -286,6 +287,20 @@ export function ModelCard({ model, view }: ModelCardProps) {
   const contextLength = formatContextLength(model.context_length);
   const createdDate = formatCreatedDate(model.created);
 
+  // calculateAveragePrice is scale-invariant; pass raw per-token values and
+  // forward the result to formatPrice, which normalises to $/1M for display.
+  // NaN/Infinity from malformed strings are clamped to 0 inside the utility.
+  const avgPrice = formatPrice(
+    calculateAveragePrice({
+      input: parseFloat(model.pricing.prompt),
+      output: parseFloat(model.pricing.completion),
+      cacheRead:
+        model.pricing.input_cache_read != null
+          ? parseFloat(model.pricing.input_cache_read)
+          : null,
+    }),
+  );
+
   if (view === "list") {
     return (
       <div className="group flex items-start gap-4 p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200">
@@ -320,6 +335,12 @@ export function ModelCard({ model, view }: ModelCardProps) {
               <span className="text-zinc-600">Out:</span>
               <span className={`font-medium ${free ? "text-emerald-400" : "text-zinc-300"}`}>
                 {completionPrice}
+              </span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-zinc-600">Avg:</span>
+              <span className={`font-medium ${free ? "text-emerald-400" : "text-zinc-300"}`}>
+                {avgPrice}
               </span>
             </span>
             <span className="text-zinc-600 text-[10px]">per 1M tokens</span>
@@ -380,8 +401,9 @@ export function ModelCard({ model, view }: ModelCardProps) {
 
       {/* Stats */}
       <div className="mt-auto">
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-2 gap-2 mb-3">
           <StatPill label="Context" value={contextLength} />
+          <StatPill label="Avg" value={avgPrice} />
           <StatPill label="In" value={promptPrice} />
           <StatPill label="Out" value={completionPrice} />
         </div>

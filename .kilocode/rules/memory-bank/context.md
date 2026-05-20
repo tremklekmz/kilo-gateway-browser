@@ -34,6 +34,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] URL-based filter persistence — filter state reads from URL params (?q=, ?provider=, ?free=true, ?sort=); added updateUrl() to sync state to URL; reset button clears all filters and navigates to "/"
 - [x] Fixed URL/state synchronization in ModelsBrowser — updateUrl now receives next values to avoid stale query params; added searchParams-to-state sync effect for browser navigation and external URL updates
 - [x] Fixed Next.js deployment prerender error on `/` by wrapping `ModelsBrowser` (uses `useSearchParams`) in a Suspense boundary in `src/app/page.tsx`
+- [x] Added `calculateAveragePrice(cost: ModelCostInfo): number` utility to `src/lib/utils.ts` — weighted avg price per 1M tokens; uses `(cacheRead×0.7 + input×0.2 + output×0.1)` when cacheRead>0, else `(input×0.9 + output×0.1)`; displayed as "Avg" stat in both grid (2×2 StatPill layout) and list (inline) views in ModelCard
 
 ## Current Structure
 
@@ -114,6 +115,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-05-20 | Added `calculateAveragePrice` utility and `ModelCostInfo` interface to utils.ts; ModelCard now shows weighted avg price (Avg stat) in both grid and list views |
 | 2026-04-15 | Fixed deployment prerender failure on `/` by wrapping `ModelsBrowser` in `<Suspense>` in `src/app/page.tsx` because it uses `useSearchParams`; build now succeeds |
 | 2026-04-15 | Fixed URL/state sync bugs in ModelsBrowser: prevented stale URL updates after setState and added resync from searchParams on URL changes |
 | 2026-04-15 | Added URL-based filter persistence (?q=, ?provider=, ?free=true, ?sort=); added reset button to clear all filters |
