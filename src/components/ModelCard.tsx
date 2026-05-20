@@ -289,16 +289,16 @@ export function ModelCard({ model, view }: ModelCardProps) {
 
   // calculateAveragePrice is scale-invariant; pass raw per-token values and
   // forward the result to formatPrice, which normalises to $/1M for display.
+  // NaN/Infinity from malformed strings are clamped to 0 inside the utility.
   const avgPrice = formatPrice(
-    String(
-      calculateAveragePrice({
-        input: parseFloat(model.pricing.prompt),
-        output: parseFloat(model.pricing.completion),
-        cacheRead: model.pricing.input_cache_read
+    calculateAveragePrice({
+      input: parseFloat(model.pricing.prompt),
+      output: parseFloat(model.pricing.completion),
+      cacheRead:
+        model.pricing.input_cache_read != null
           ? parseFloat(model.pricing.input_cache_read)
           : null,
-      }),
-    ),
+    }),
   );
 
   if (view === "list") {

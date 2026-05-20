@@ -19,11 +19,16 @@ export interface ModelCostInfo {
  *   avg = (input × 0.9) + (output × 0.1)
  */
 export function calculateAveragePrice(cost: ModelCostInfo): number {
-  const cacheRead = cost.cacheRead ?? 0;
+  const input = Number.isFinite(cost.input) ? cost.input : 0;
+  const output = Number.isFinite(cost.output) ? cost.output : 0;
+  const cacheRead =
+    cost.cacheRead != null && Number.isFinite(cost.cacheRead)
+      ? cost.cacheRead
+      : 0;
   if (cacheRead > 0) {
-    return cacheRead * 0.7 + cost.input * 0.2 + cost.output * 0.1;
+    return cacheRead * 0.7 + input * 0.2 + output * 0.1;
   }
-  return cost.input * 0.9 + cost.output * 0.1;
+  return input * 0.9 + output * 0.1;
 }
 
 export function getProviderFromId(modelId: string): string {
@@ -124,9 +129,9 @@ export function formatContextLength(length: number): string {
   return length.toString();
 }
 
-export function formatPrice(price: string): string {
-  const num = parseFloat(price);
-  if (num === 0) return "Free";
+export function formatPrice(price: string | number): string {
+  const num = typeof price === "number" ? price : parseFloat(price);
+  if (!Number.isFinite(num) || num === 0) return "Free";
   if (num < 0.000001) return `$${(num * 1_000_000).toFixed(4)}`;
   return `$${(num * 1_000_000).toFixed(2)}`;
 }
