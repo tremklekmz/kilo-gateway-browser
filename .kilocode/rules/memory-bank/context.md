@@ -36,6 +36,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Fixed Next.js deployment prerender error on `/` by wrapping `ModelsBrowser` (uses `useSearchParams`) in a Suspense boundary in `src/app/page.tsx`
 - [x] Added `calculateAveragePrice(cost: ModelCostInfo): number` utility to `src/lib/utils.ts` — weighted avg price per 1M tokens; uses `(cacheRead×0.7 + input×0.2 + output×0.1)` when cacheRead>0, else `(input×0.9 + output×0.1)`; displayed as "Avg" stat in both grid (2×2 StatPill layout) and list (inline) views in ModelCard
 - [x] Added price sorting options — "Price: Low to High" (`price-asc`) and "Price: High to Low" (`price-desc`) added to sort dropdown in SearchFilter; ModelsBrowser sorts using `calculateAveragePrice`; URL persistence via `?sort=price-asc` / `?sort=price-desc`
+- [x] Avg price range filter (priceMin / priceMax in $/1M tokens) and date range filter (dateFrom / dateTo, HTML5 date pickers); URL-persisted via `?priceMin=…&priceMax=…&dateFrom=…&dateTo=…`; presented in a collapsible "More filters" panel that auto-expands when any range is active and shows a count badge; models with `created === 0` are excluded from results when any date bound is active; inline warnings shown for `min > max` price or date ranges; shared `getAvgPricePerMillion` lambda inside `filteredModels` memo reused for both range filter and price sort
 
 ## Current Structure
 
@@ -116,6 +117,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-05-22 | Added avg-price and date from-to range filters to the AI Model Browser; collapsible "More filters" panel with count badge and auto-expand on URL params; URL persistence via `?priceMin/priceMax/dateFrom/dateTo`; integrates with existing search/provider/free/sort filters and "Load More" pagination |
 | 2026-05-20 | Added price sort options (Low to High / High to Low) to SearchFilter and ModelsBrowser; uses `calculateAveragePrice`; persisted in URL as `?sort=price-asc` / `?sort=price-desc` |
 | 2026-05-20 | Added `calculateAveragePrice` utility and `ModelCostInfo` interface to utils.ts; ModelCard now shows weighted avg price (Avg stat) in both grid and list views |
 | 2026-04-15 | Fixed deployment prerender failure on `/` by wrapping `ModelsBrowser` in `<Suspense>` in `src/app/page.tsx` because it uses `useSearchParams`; build now succeeds |
