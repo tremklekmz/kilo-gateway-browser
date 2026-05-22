@@ -98,6 +98,10 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest" | "price-asc" | "price-desc">(
     (searchParams.get("sort") as "default" | "newest" | "oldest" | "price-asc" | "price-desc") || "default"
   );
+  const [priceMin, setPriceMin] = useState(searchParams.get("priceMin") || "");
+  const [priceMax, setPriceMax] = useState(searchParams.get("priceMax") || "");
+  const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
+  const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -106,24 +110,36 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     selectedProvider?: string;
     freeOnly?: boolean;
     sortBy?: "default" | "newest" | "oldest" | "price-asc" | "price-desc";
+    priceMin?: string;
+    priceMax?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }) => {
     const nextSearch = next?.search ?? search;
     const nextProvider = next?.selectedProvider ?? selectedProvider;
     const nextFreeOnly = next?.freeOnly ?? freeOnly;
     const nextSortBy = next?.sortBy ?? sortBy;
+    const nextPriceMin = next?.priceMin ?? priceMin;
+    const nextPriceMax = next?.priceMax ?? priceMax;
+    const nextDateFrom = next?.dateFrom ?? dateFrom;
+    const nextDateTo = next?.dateTo ?? dateTo;
 
     const params = new URLSearchParams();
     if (nextSearch) params.set("q", nextSearch);
     if (nextProvider) params.set("provider", nextProvider);
     if (nextFreeOnly) params.set("free", "true");
     if (nextSortBy !== "default") params.set("sort", nextSortBy);
+    if (nextPriceMin) params.set("priceMin", nextPriceMin);
+    if (nextPriceMax) params.set("priceMax", nextPriceMax);
+    if (nextDateFrom) params.set("dateFrom", nextDateFrom);
+    if (nextDateTo) params.set("dateTo", nextDateTo);
 
     const queryString = params.toString();
     const newUrl = queryString ? `?${queryString}` : "/";
     startTransition(() => {
       router.replace(newUrl, { scroll: false });
     });
-  }, [search, selectedProvider, freeOnly, sortBy, router, startTransition]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, dateFrom, dateTo, router, startTransition]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -145,11 +161,35 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     updateUrl({ sortBy: value });
   };
 
+  const handlePriceMinChange = (value: string) => {
+    setPriceMin(value);
+    updateUrl({ priceMin: value });
+  };
+
+  const handlePriceMaxChange = (value: string) => {
+    setPriceMax(value);
+    updateUrl({ priceMax: value });
+  };
+
+  const handleDateFromChange = (value: string) => {
+    setDateFrom(value);
+    updateUrl({ dateFrom: value });
+  };
+
+  const handleDateToChange = (value: string) => {
+    setDateTo(value);
+    updateUrl({ dateTo: value });
+  };
+
   const handleReset = () => {
     setSearch("");
     setSelectedProvider("");
     setFreeOnly(false);
     setSortBy("default");
+    setPriceMin("");
+    setPriceMax("");
+    setDateFrom("");
+    setDateTo("");
     startTransition(() => {
       router.replace("/", { scroll: false });
     });
@@ -186,11 +226,19 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       rawSort === "price-asc" || rawSort === "price-desc"
         ? rawSort
         : "default";
+    const urlPriceMin = searchParams.get("priceMin") || "";
+    const urlPriceMax = searchParams.get("priceMax") || "";
+    const urlDateFrom = searchParams.get("dateFrom") || "";
+    const urlDateTo = searchParams.get("dateTo") || "";
 
     setSearch(urlSearch);
     setSelectedProvider(urlProvider);
     setFreeOnly(urlFreeOnly);
     setSortBy(urlSortBy);
+    setPriceMin(urlPriceMin);
+    setPriceMax(urlPriceMax);
+    setDateFrom(urlDateFrom);
+    setDateTo(urlDateTo);
     // Only re-sync when the URL actually changes (e.g. browser back/forward).
     // Omitting the state variables from deps prevents a feedback loop where
     // setState → re-render → effect re-runs → setState again causes blinking.
@@ -209,6 +257,37 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const providers = useMemo(() => getUniqueProviders(models), [models]);
 
   const filteredModels = useMemo(() => {
+    // Shared per-million-token avg price helper, reused by both range filter and
+    // price sorting. calculateAveragePrice returns a per-token weighted avg, so
+    // we multiply by 1,000,000 to match the $/1M-tokens unit shown on ModelCard.
+    const getAvgPricePerMillion = (model: AIModel) =>
+      calculateAveragePrice({
+        input: parseFloat(model.pricing.prompt),
+        output: parseFloat(model.pricing.completion),
+        cacheRead:
+          model.pricing.input_cache_read != null
+            ? parseFloat(model.pricing.input_cache_read)
+            : null,
+      }) * 1_000_000;
+
+    // Parse range bounds once. Empty strings or malformed values become null
+    // (treated as "no bound on this side"). Negative price inputs are ignored.
+    const parsedPriceMin = priceMin === "" ? NaN : Number(priceMin);
+    const parsedPriceMax = priceMax === "" ? NaN : Number(priceMax);
+    const minPriceNum =
+      Number.isFinite(parsedPriceMin) && parsedPriceMin >= 0 ? parsedPriceMin : null;
+    const maxPriceNum =
+      Number.isFinite(parsedPriceMax) && parsedPriceMax >= 0 ? parsedPriceMax : null;
+
+    const parsedFromMs = dateFrom === "" ? NaN : Date.parse(dateFrom);
+    const parsedToMs = dateTo === "" ? NaN : Date.parse(dateTo);
+    // Convert to Unix seconds (matching AIModel.created). Shift `to` to end of
+    // day so e.g. dateTo=2024-01-15 is inclusive of any time on that calendar
+    // day (UTC-based to keep behaviour predictable across timezones).
+    const fromTs = Number.isFinite(parsedFromMs) ? parsedFromMs / 1000 : null;
+    const toTs = Number.isFinite(parsedToMs) ? (parsedToMs + 86_399_999) / 1000 : null;
+    const dateActive = fromTs != null || toTs != null;
+
     const filtered = models.filter((model) => {
       const searchLower = search.toLowerCase();
       const matchesSearch =
@@ -223,7 +302,32 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
 
       const matchesFree = !freeOnly || isFreeModel(model);
 
-      return matchesSearch && matchesProvider && matchesFree;
+      // Avg price range — compared in $/1M tokens to match the unit shown on
+      // ModelCard and in the filter inputs.
+      const avgPerMillion =
+        minPriceNum != null || maxPriceNum != null
+          ? getAvgPricePerMillion(model)
+          : 0;
+      const matchesPriceMin = minPriceNum == null || avgPerMillion >= minPriceNum;
+      const matchesPriceMax = maxPriceNum == null || avgPerMillion <= maxPriceNum;
+
+      // Date range — model.created is a Unix timestamp (seconds). Models with
+      // `created === 0` are meta/router placeholders with no real date and are
+      // excluded whenever any date bound is active.
+      const matchesDate =
+        !dateActive ||
+        (model.created !== 0 &&
+          (fromTs == null || model.created >= fromTs) &&
+          (toTs == null || model.created <= toTs));
+
+      return (
+        matchesSearch &&
+        matchesProvider &&
+        matchesFree &&
+        matchesPriceMin &&
+        matchesPriceMax &&
+        matchesDate
+      );
     });
 
     if (sortBy === "newest") {
@@ -233,29 +337,28 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       return [...filtered].sort((a, b) => a.created - b.created);
     }
     if (sortBy === "price-asc" || sortBy === "price-desc") {
-      const getAvgPrice = (model: AIModel) =>
-        calculateAveragePrice({
-          input: parseFloat(model.pricing.prompt),
-          output: parseFloat(model.pricing.completion),
-          cacheRead:
-            model.pricing.input_cache_read != null
-              ? parseFloat(model.pricing.input_cache_read)
-              : null,
-        });
       return [...filtered].sort((a, b) =>
         sortBy === "price-asc"
-          ? getAvgPrice(a) - getAvgPrice(b)
-          : getAvgPrice(b) - getAvgPrice(a)
+          ? getAvgPricePerMillion(a) - getAvgPricePerMillion(b)
+          : getAvgPricePerMillion(b) - getAvgPricePerMillion(a)
       );
     }
     return filtered;
-  }, [models, search, selectedProvider, freeOnly, sortBy]);
+  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, dateFrom, dateTo]);
 
-  const hasFilters = !!search || !!selectedProvider || freeOnly || sortBy !== "default";
+  const hasFilters =
+    !!search ||
+    !!selectedProvider ||
+    freeOnly ||
+    sortBy !== "default" ||
+    !!priceMin ||
+    !!priceMax ||
+    !!dateFrom ||
+    !!dateTo;
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [search, selectedProvider, freeOnly, sortBy]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, dateFrom, dateTo]);
 
   const visibleModels = useMemo(
     () => filteredModels.slice(0, visibleCount),
@@ -330,6 +433,14 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             onFreeOnlyChange={handleFreeOnlyChange}
             sortBy={sortBy}
             onSortByChange={handleSortByChange}
+            priceMin={priceMin}
+            priceMax={priceMax}
+            onPriceMinChange={handlePriceMinChange}
+            onPriceMaxChange={handlePriceMaxChange}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={handleDateFromChange}
+            onDateToChange={handleDateToChange}
             hasFilters={hasFilters}
             onReset={handleReset}
             totalCount={models.length}
