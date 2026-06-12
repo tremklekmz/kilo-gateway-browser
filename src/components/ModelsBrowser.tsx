@@ -438,6 +438,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         // Models with no benchmark data sink to the end regardless of direction.
         const aHas = a.terminalBench != null;
         const bHas = b.terminalBench != null;
+        if (!aHas && !bHas) return 0;
         if (aHas !== bHas) return aHas ? -1 : 1;
         const aScore = a.terminalBench!.overallScore;
         const bScore = b.terminalBench!.overallScore;
