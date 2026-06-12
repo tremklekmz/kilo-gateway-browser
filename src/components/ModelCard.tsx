@@ -92,11 +92,35 @@ function FreeBadge() {
   );
 }
 
-function TerminalBenchBadge({ score }: { score: number }) {
+function formatUsd(value: number, fractionDigits = 2): string {
+  if (!Number.isFinite(value)) return "—";
+  if (value >= 100) return `$${value.toFixed(0)}`;
+  return `$${value.toFixed(fractionDigits)}`;
+}
+
+function TerminalBenchBadge({
+  score,
+  avgAttemptCostUsd,
+  completionPrice,
+}: {
+  score: number;
+  avgAttemptCostUsd: number;
+  completionPrice?: string | null;
+}) {
+  const tooltipLines = [
+    `TerminalBench overall: ${formatPercent(score, 1)}`,
+    `Avg attempt cost: ${formatUsd(avgAttemptCostUsd)}`,
+  ];
+  if (completionPrice) {
+    tooltipLines.push(`Avg completion price: ${completionPrice}/1M tokens`);
+  }
+  const tooltip = tooltipLines.join("\n");
+
   return (
     <span
-      title="TerminalBench overall score"
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0"
+      title={tooltip}
+      aria-label={tooltip}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 cursor-help"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -112,7 +136,7 @@ function TerminalBenchBadge({ score }: { score: number }) {
         <polyline points="4 17 10 11 4 5" />
         <line x1="12" x2="20" y1="19" y2="19" />
       </svg>
-      T-Bench {formatPercent(score, 1)}
+      {formatPercent(score, 1)}
     </span>
   );
 }
@@ -365,7 +389,11 @@ export function ModelCard({ model, view }: ModelCardProps) {
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
             {model.terminalBench && (
-              <TerminalBenchBadge score={model.terminalBench.overallScore} />
+              <TerminalBenchBadge
+                score={model.terminalBench.overallScore}
+                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+                completionPrice={completionPrice}
+              />
             )}
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
@@ -445,7 +473,11 @@ export function ModelCard({ model, view }: ModelCardProps) {
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
             {model.terminalBench && (
-              <TerminalBenchBadge score={model.terminalBench.overallScore} />
+              <TerminalBenchBadge
+                score={model.terminalBench.overallScore}
+                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+                completionPrice={completionPrice}
+              />
             )}
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
