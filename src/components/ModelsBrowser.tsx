@@ -95,11 +95,28 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [selectedProvider, setSelectedProvider] = useState(searchParams.get("provider") || "");
   const [freeOnly, setFreeOnly] = useState(searchParams.get("free") === "true");
-  const [sortBy, setSortBy] = useState<"default" | "newest" | "oldest" | "price-asc" | "price-desc">(
-    (searchParams.get("sort") as "default" | "newest" | "oldest" | "price-asc" | "price-desc") || "default"
+  const [sortBy, setSortBy] = useState<
+    | "default"
+    | "newest"
+    | "oldest"
+    | "price-asc"
+    | "price-desc"
+    | "bench-asc"
+    | "bench-desc"
+  >(
+    (searchParams.get("sort") as
+      | "default"
+      | "newest"
+      | "oldest"
+      | "price-asc"
+      | "price-desc"
+      | "bench-asc"
+      | "bench-desc") || "default"
   );
   const [priceMin, setPriceMin] = useState(searchParams.get("priceMin") || "");
   const [priceMax, setPriceMax] = useState(searchParams.get("priceMax") || "");
+  const [benchMin, setBenchMin] = useState(searchParams.get("benchMin") || "");
+  const [benchMax, setBenchMax] = useState(searchParams.get("benchMax") || "");
   const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -109,9 +126,18 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     search?: string;
     selectedProvider?: string;
     freeOnly?: boolean;
-    sortBy?: "default" | "newest" | "oldest" | "price-asc" | "price-desc";
+    sortBy?:
+      | "default"
+      | "newest"
+      | "oldest"
+      | "price-asc"
+      | "price-desc"
+      | "bench-asc"
+      | "bench-desc";
     priceMin?: string;
     priceMax?: string;
+    benchMin?: string;
+    benchMax?: string;
     dateFrom?: string;
     dateTo?: string;
   }) => {
@@ -121,6 +147,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const nextSortBy = next?.sortBy ?? sortBy;
     const nextPriceMin = next?.priceMin ?? priceMin;
     const nextPriceMax = next?.priceMax ?? priceMax;
+    const nextBenchMin = next?.benchMin ?? benchMin;
+    const nextBenchMax = next?.benchMax ?? benchMax;
     const nextDateFrom = next?.dateFrom ?? dateFrom;
     const nextDateTo = next?.dateTo ?? dateTo;
 
@@ -131,6 +159,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     if (nextSortBy !== "default") params.set("sort", nextSortBy);
     if (nextPriceMin) params.set("priceMin", nextPriceMin);
     if (nextPriceMax) params.set("priceMax", nextPriceMax);
+    if (nextBenchMin) params.set("benchMin", nextBenchMin);
+    if (nextBenchMax) params.set("benchMax", nextBenchMax);
     if (nextDateFrom) params.set("dateFrom", nextDateFrom);
     if (nextDateTo) params.set("dateTo", nextDateTo);
 
@@ -139,7 +169,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     startTransition(() => {
       router.replace(newUrl, { scroll: false });
     });
-  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, dateFrom, dateTo, router, startTransition]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMax, dateFrom, dateTo, router, startTransition]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -156,7 +186,14 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     updateUrl({ freeOnly: value });
   };
 
-  const handleSortByChange = (value: "default" | "newest" | "oldest" | "price-asc" | "price-desc") => {
+  const handleSortByChange = (value:
+    | "default"
+    | "newest"
+    | "oldest"
+    | "price-asc"
+    | "price-desc"
+    | "bench-asc"
+    | "bench-desc") => {
     setSortBy(value);
     updateUrl({ sortBy: value });
   };
@@ -169,6 +206,16 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const handlePriceMaxChange = (value: string) => {
     setPriceMax(value);
     updateUrl({ priceMax: value });
+  };
+
+  const handleBenchMinChange = (value: string) => {
+    setBenchMin(value);
+    updateUrl({ benchMin: value });
+  };
+
+  const handleBenchMaxChange = (value: string) => {
+    setBenchMax(value);
+    updateUrl({ benchMax: value });
   };
 
   const handleDateFromChange = (value: string) => {
@@ -188,6 +235,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setSortBy("default");
     setPriceMin("");
     setPriceMax("");
+    setBenchMin("");
+    setBenchMax("");
     setDateFrom("");
     setDateTo("");
     startTransition(() => {
@@ -222,12 +271,19 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const urlFreeOnly = searchParams.get("free") === "true";
     const rawSort = searchParams.get("sort");
     const urlSortBy =
-      rawSort === "newest" || rawSort === "oldest" || rawSort === "default" ||
-      rawSort === "price-asc" || rawSort === "price-desc"
+      rawSort === "newest" ||
+      rawSort === "oldest" ||
+      rawSort === "default" ||
+      rawSort === "price-asc" ||
+      rawSort === "price-desc" ||
+      rawSort === "bench-asc" ||
+      rawSort === "bench-desc"
         ? rawSort
         : "default";
     const urlPriceMin = searchParams.get("priceMin") || "";
     const urlPriceMax = searchParams.get("priceMax") || "";
+    const urlBenchMin = searchParams.get("benchMin") || "";
+    const urlBenchMax = searchParams.get("benchMax") || "";
     const urlDateFrom = searchParams.get("dateFrom") || "";
     const urlDateTo = searchParams.get("dateTo") || "";
 
@@ -237,6 +293,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setSortBy(urlSortBy);
     setPriceMin(urlPriceMin);
     setPriceMax(urlPriceMax);
+    setBenchMin(urlBenchMin);
+    setBenchMax(urlBenchMax);
     setDateFrom(urlDateFrom);
     setDateTo(urlDateTo);
     // Only re-sync when the URL actually changes (e.g. browser back/forward).
@@ -288,6 +346,17 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const toTs = Number.isFinite(parsedToMs) ? (parsedToMs + 86_399_999) / 1000 : null;
     const dateActive = fromTs != null || toTs != null;
 
+    // TerminalBench filters. When either bound is active, models without any
+    // benchmark data are excluded (per product spec). The max-cost filter
+    // also keeps models that don't have a cost value set.
+    const parsedBenchMin = benchMin === "" ? NaN : Number(benchMin);
+    const parsedBenchMax = benchMax === "" ? NaN : Number(benchMax);
+    const benchMinNum =
+      Number.isFinite(parsedBenchMin) && parsedBenchMin >= 0 ? parsedBenchMin : null;
+    const benchMaxNum =
+      Number.isFinite(parsedBenchMax) && parsedBenchMax >= 0 ? parsedBenchMax : null;
+    const benchActive = benchMinNum != null || benchMaxNum != null;
+
     const filtered = models.filter((model) => {
       const searchLower = search.toLowerCase();
       const matchesSearch =
@@ -320,13 +389,24 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
           (fromTs == null || model.created >= fromTs) &&
           (toTs == null || model.created <= toTs));
 
+      // TerminalBench filters. Models missing benchmark data are dropped when
+      // any benchmark bound is active. For the cost bound we additionally keep
+      // models that have a benchmark score but no cost recorded (cost=null).
+      const bench = model.terminalBench;
+      const matchesBench =
+        !benchActive ||
+        (bench != null &&
+          (benchMinNum == null || bench.overallScore >= benchMinNum) &&
+          (benchMaxNum == null || bench.avgAttemptCostUsd <= benchMaxNum));
+
       return (
         matchesSearch &&
         matchesProvider &&
         matchesFree &&
         matchesPriceMin &&
         matchesPriceMax &&
-        matchesDate
+        matchesDate &&
+        matchesBench
       );
     });
 
@@ -343,8 +423,15 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
           : getAvgPricePerMillion(b) - getAvgPricePerMillion(a)
       );
     }
+    if (sortBy === "bench-asc" || sortBy === "bench-desc") {
+      return [...filtered].sort((a, b) => {
+        const aScore = a.terminalBench?.overallScore ?? 0;
+        const bScore = b.terminalBench?.overallScore ?? 0;
+        return sortBy === "bench-asc" ? aScore - bScore : bScore - aScore;
+      });
+    }
     return filtered;
-  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, dateFrom, dateTo]);
+  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMax, dateFrom, dateTo]);
 
   const hasFilters =
     !!search ||
@@ -353,12 +440,14 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     sortBy !== "default" ||
     !!priceMin ||
     !!priceMax ||
+    !!benchMin ||
+    !!benchMax ||
     !!dateFrom ||
     !!dateTo;
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, dateFrom, dateTo]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMax, dateFrom, dateTo]);
 
   const visibleModels = useMemo(
     () => filteredModels.slice(0, visibleCount),
@@ -437,6 +526,10 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             priceMax={priceMax}
             onPriceMinChange={handlePriceMinChange}
             onPriceMaxChange={handlePriceMaxChange}
+            benchMin={benchMin}
+            benchMax={benchMax}
+            onBenchMinChange={handleBenchMinChange}
+            onBenchMaxChange={handleBenchMaxChange}
             dateFrom={dateFrom}
             dateTo={dateTo}
             onDateFromChange={handleDateFromChange}
