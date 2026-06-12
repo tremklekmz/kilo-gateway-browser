@@ -101,20 +101,14 @@ function formatUsd(value: number, fractionDigits = 2): string {
 function TerminalBenchBadge({
   score,
   avgAttemptCostUsd,
-  completionPrice,
 }: {
   score: number;
   avgAttemptCostUsd: number;
-  completionPrice?: string | null;
 }) {
-  const tooltipLines = [
-    `TerminalBench overall: ${formatPercent(score, 1)}`,
-    `Avg attempt cost: ${formatUsd(avgAttemptCostUsd)}`,
-  ];
-  if (completionPrice) {
-    tooltipLines.push(`Avg completion price: ${completionPrice}/1M tokens`);
-  }
-  const tooltip = tooltipLines.join("\n");
+  const tooltip = `TerminalBench overall: ${formatPercent(
+    score,
+    1,
+  )}\nAvg attempt cost: ${formatUsd(avgAttemptCostUsd)}`;
 
   return (
     <span
@@ -392,7 +386,6 @@ export function ModelCard({ model, view }: ModelCardProps) {
               <TerminalBenchBadge
                 score={model.terminalBench.overallScore}
                 avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
-                completionPrice={completionPrice}
               />
             )}
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
@@ -476,7 +469,6 @@ export function ModelCard({ model, view }: ModelCardProps) {
               <TerminalBenchBadge
                 score={model.terminalBench.overallScore}
                 avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
-                completionPrice={completionPrice}
               />
             )}
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
