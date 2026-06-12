@@ -24,7 +24,7 @@ export interface TopProvider {
 
 export interface TerminalBench {
   overallScore: number;
-  avgAttemptCostUsd: number;
+  avgAttemptCostUsd: number | null;
 }
 
 export interface AIModel {

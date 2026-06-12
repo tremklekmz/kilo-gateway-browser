@@ -103,12 +103,14 @@ function TerminalBenchBadge({
   avgAttemptCostUsd,
 }: {
   score: number;
-  avgAttemptCostUsd: number;
+  avgAttemptCostUsd: number | null;
 }) {
+  const costText =
+    avgAttemptCostUsd == null ? "not recorded" : formatUsd(avgAttemptCostUsd);
   const tooltip = `TerminalBench overall: ${formatPercent(
     score,
     1,
-  )}\nAvg attempt cost: ${formatUsd(avgAttemptCostUsd)}`;
+  )}\nAvg attempt cost: ${costText}`;
 
   return (
     <span

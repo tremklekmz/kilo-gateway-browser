@@ -11,12 +11,32 @@ interface SearchFilterProps {
   providers: string[];
   freeOnly: boolean;
   onFreeOnlyChange: (value: boolean) => void;
-  sortBy: "default" | "newest" | "oldest" | "price-asc" | "price-desc";
-  onSortByChange: (value: "default" | "newest" | "oldest" | "price-asc" | "price-desc") => void;
+  sortBy:
+    | "default"
+    | "newest"
+    | "oldest"
+    | "price-asc"
+    | "price-desc"
+    | "bench-asc"
+    | "bench-desc";
+  onSortByChange: (
+    value:
+      | "default"
+      | "newest"
+      | "oldest"
+      | "price-asc"
+      | "price-desc"
+      | "bench-asc"
+      | "bench-desc",
+  ) => void;
   priceMin: string;
   priceMax: string;
   onPriceMinChange: (value: string) => void;
   onPriceMaxChange: (value: string) => void;
+  benchMin: string;
+  benchMaxCost: string;
+  onBenchMinChange: (value: string) => void;
+  onBenchMaxCostChange: (value: string) => void;
   dateFrom: string;
   dateTo: string;
   onDateFromChange: (value: string) => void;
@@ -163,6 +183,10 @@ export function SearchFilter({
   priceMax,
   onPriceMinChange,
   onPriceMaxChange,
+  benchMin,
+  benchMaxCost,
+  onBenchMinChange,
+  onBenchMaxCostChange,
   dateFrom,
   dateTo,
   onDateFromChange,
@@ -177,12 +201,14 @@ export function SearchFilter({
   // Initializer-only — we deliberately do NOT re-sync on prop change so the
   // user's manual collapse choice is respected.
   const [expanded, setExpanded] = useState(
-    () => !!(priceMin || priceMax || dateFrom || dateTo)
+    () => !!(priceMin || priceMax || benchMin || benchMaxCost || dateFrom || dateTo)
   );
 
   const activeRangeCount =
     (priceMin ? 1 : 0) +
     (priceMax ? 1 : 0) +
+    (benchMin ? 1 : 0) +
+    (benchMaxCost ? 1 : 0) +
     (dateFrom ? 1 : 0) +
     (dateTo ? 1 : 0);
 
@@ -194,6 +220,10 @@ export function SearchFilter({
     Number.isFinite(priceMinNum) &&
     Number.isFinite(priceMaxNum) &&
     priceMinNum > priceMaxNum;
+
+  const benchMinNum = benchMin === "" ? NaN : Number(benchMin);
+  const benchRangeInvalid =
+    Number.isFinite(benchMinNum) && (benchMinNum < 0 || benchMinNum > 1);
 
   const dateFromMs = dateFrom === "" ? NaN : Date.parse(dateFrom);
   const dateToMs = dateTo === "" ? NaN : Date.parse(dateTo);
@@ -251,7 +281,18 @@ export function SearchFilter({
         <div className="relative sm:w-44">
           <select
             value={sortBy}
-            onChange={(e) => onSortByChange(e.target.value as "default" | "newest" | "oldest" | "price-asc" | "price-desc")}
+            onChange={(e) =>
+              onSortByChange(
+                e.target.value as
+                  | "default"
+                  | "newest"
+                  | "oldest"
+                  | "price-asc"
+                  | "price-desc"
+                  | "bench-asc"
+                  | "bench-desc",
+              )
+            }
             className="w-full appearance-none pl-3 pr-8 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200 cursor-pointer"
           >
             <option value="default">Default order</option>
@@ -259,6 +300,8 @@ export function SearchFilter({
             <option value="oldest">Oldest first</option>
             <option value="price-asc">Price: Low to High</option>
             <option value="price-desc">Price: High to Low</option>
+            <option value="bench-asc">Benchmark: Low to High</option>
+            <option value="bench-desc">Benchmark: High to Low</option>
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
             <ChevronIcon />
@@ -379,6 +422,65 @@ export function SearchFilter({
                 Min price is greater than max — no models will match.
               </p>
             )}
+          </div>
+
+          {/* Min benchmark result */}
+          <div className="flex-1 min-w-[200px]">
+            <label
+              htmlFor="bench-min"
+              className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2"
+            >
+              Min benchmark result{" "}
+              <span className="text-zinc-600 font-normal normal-case tracking-normal">
+                (0–1)
+              </span>
+            </label>
+            <input
+              id="bench-min"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max="1"
+              step="0.01"
+              placeholder="e.g. 0.5"
+              value={benchMin}
+              onChange={(e) => onBenchMinChange(e.target.value)}
+              className="w-full px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
+            />
+            {benchRangeInvalid && (
+              <p className="mt-1.5 text-xs text-red-400">
+                Benchmark result must be between 0 and 1.
+              </p>
+            )}
+          </div>
+
+          {/* Max benchmark cost */}
+          <div className="flex-1 min-w-[200px]">
+            <label
+              htmlFor="bench-max-cost"
+              className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2"
+            >
+              Max benchmark cost{" "}
+              <span className="text-zinc-600 font-normal normal-case tracking-normal">
+                (USD / attempt)
+              </span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm pointer-events-none">
+                $
+              </span>
+              <input
+                id="bench-max-cost"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="No max"
+                value={benchMaxCost}
+                onChange={(e) => onBenchMaxCostChange(e.target.value)}
+                className="w-full pl-7 pr-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
+              />
+            </div>
           </div>
 
           {/* Created date range */}
