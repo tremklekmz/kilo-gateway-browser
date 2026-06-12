@@ -22,6 +22,11 @@ export interface TopProvider {
   is_moderated: boolean;
 }
 
+export interface TerminalBench {
+  overallScore: number;
+  avgAttemptCostUsd: number;
+}
+
 export interface AIModel {
   id: string;
   canonical_slug?: string;
@@ -34,6 +39,8 @@ export interface AIModel {
   top_provider: TopProvider;
   supported_parameters?: string[];
   preferredIndex?: number;
+  terminalBench?: TerminalBench;
+  mayTrainOnYourPrompts?: boolean;
 }
 
 export interface ModelsResponse {

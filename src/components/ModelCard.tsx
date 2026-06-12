@@ -6,6 +6,7 @@ import {
   calculateAveragePrice,
   formatContextLength,
   formatCreatedDate,
+  formatPercent,
   formatPrice,
   formatProviderName,
   getProviderFromId,
@@ -88,6 +89,76 @@ function FreeBadge() {
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-neon-green/10 text-neon-green border border-neon-green/30 shrink-0">
       FREE
     </span>
+  );
+}
+
+function formatUsd(value: number, fractionDigits = 2): string {
+  if (!Number.isFinite(value)) return "—";
+  if (value >= 100) return `$${value.toFixed(0)}`;
+  return `$${value.toFixed(fractionDigits)}`;
+}
+
+function TerminalBenchBadge({
+  score,
+  avgAttemptCostUsd,
+}: {
+  score: number;
+  avgAttemptCostUsd: number;
+}) {
+  const tooltip = `TerminalBench overall: ${formatPercent(
+    score,
+    1,
+  )}\nAvg attempt cost: ${formatUsd(avgAttemptCostUsd)}`;
+
+  return (
+    <span
+      title={tooltip}
+      aria-label={tooltip}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 cursor-help"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="10"
+        height="10"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="4 17 10 11 4 5" />
+        <line x1="12" x2="20" y1="19" y2="19" />
+      </svg>
+      {formatPercent(score, 1)}
+    </span>
+  );
+}
+
+function TrainingWarning() {
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="shrink-0 mt-0.5"
+      >
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+        <line x1="12" x2="12" y1="9" y2="13" />
+        <line x1="12" x2="12.01" y1="17" y2="17" />
+      </svg>
+      <span>This provider may train on your prompts.</span>
+    </div>
   );
 }
 
@@ -311,6 +382,12 @@ export function ModelCard({ model, view }: ModelCardProps) {
             </h3>
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
+            {model.terminalBench && (
+              <TerminalBenchBadge
+                score={model.terminalBench.overallScore}
+                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+              />
+            )}
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
           {model.description && (
@@ -319,6 +396,11 @@ export function ModelCard({ model, view }: ModelCardProps) {
               lineClamp={2}
               className="text-xs text-zinc-500 leading-relaxed mb-2.5"
             />
+          )}
+          {model.mayTrainOnYourPrompts && (
+            <div className="mb-2.5">
+              <TrainingWarning />
+            </div>
           )}
           <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
@@ -383,6 +465,12 @@ export function ModelCard({ model, view }: ModelCardProps) {
           <div className="flex flex-wrap gap-1.5">
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
+            {model.terminalBench && (
+              <TerminalBenchBadge
+                score={model.terminalBench.overallScore}
+                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+              />
+            )}
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
         </div>
@@ -401,6 +489,11 @@ export function ModelCard({ model, view }: ModelCardProps) {
 
       {/* Stats */}
       <div className="mt-auto">
+        {model.mayTrainOnYourPrompts && (
+          <div className="mb-3">
+            <TrainingWarning />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <StatPill label="Context" value={contextLength} />
           <StatPill label="Avg" value={avgPrice} />

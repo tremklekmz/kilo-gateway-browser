@@ -129,6 +129,11 @@ export function formatContextLength(length: number): string {
   return length.toString();
 }
 
+export function formatPercent(value: number, fractionDigits = 1): string {
+  if (!Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(fractionDigits)}%`;
+}
+
 export function formatPrice(price: string | number): string {
   const num = typeof price === "number" ? price : parseFloat(price);
   if (!Number.isFinite(num) || num === 0) return "Free";
