@@ -116,7 +116,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [priceMin, setPriceMin] = useState(searchParams.get("priceMin") || "");
   const [priceMax, setPriceMax] = useState(searchParams.get("priceMax") || "");
   const [benchMin, setBenchMin] = useState(searchParams.get("benchMin") || "");
-  const [benchMax, setBenchMax] = useState(searchParams.get("benchMax") || "");
+  const [benchMaxCost, setBenchMaxCost] = useState(
+    searchParams.get("benchMaxCost") || ""
+  );
   const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -137,7 +139,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     priceMin?: string;
     priceMax?: string;
     benchMin?: string;
-    benchMax?: string;
+    benchMaxCost?: string;
     dateFrom?: string;
     dateTo?: string;
   }) => {
@@ -148,7 +150,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const nextPriceMin = next?.priceMin ?? priceMin;
     const nextPriceMax = next?.priceMax ?? priceMax;
     const nextBenchMin = next?.benchMin ?? benchMin;
-    const nextBenchMax = next?.benchMax ?? benchMax;
+    const nextBenchMaxCost = next?.benchMaxCost ?? benchMaxCost;
     const nextDateFrom = next?.dateFrom ?? dateFrom;
     const nextDateTo = next?.dateTo ?? dateTo;
 
@@ -160,7 +162,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     if (nextPriceMin) params.set("priceMin", nextPriceMin);
     if (nextPriceMax) params.set("priceMax", nextPriceMax);
     if (nextBenchMin) params.set("benchMin", nextBenchMin);
-    if (nextBenchMax) params.set("benchMax", nextBenchMax);
+    if (nextBenchMaxCost) params.set("benchMaxCost", nextBenchMaxCost);
     if (nextDateFrom) params.set("dateFrom", nextDateFrom);
     if (nextDateTo) params.set("dateTo", nextDateTo);
 
@@ -169,7 +171,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     startTransition(() => {
       router.replace(newUrl, { scroll: false });
     });
-  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMax, dateFrom, dateTo, router, startTransition]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, router, startTransition]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -213,9 +215,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     updateUrl({ benchMin: value });
   };
 
-  const handleBenchMaxChange = (value: string) => {
-    setBenchMax(value);
-    updateUrl({ benchMax: value });
+  const handleBenchMaxCostChange = (value: string) => {
+    setBenchMaxCost(value);
+    updateUrl({ benchMaxCost: value });
   };
 
   const handleDateFromChange = (value: string) => {
@@ -236,7 +238,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setPriceMin("");
     setPriceMax("");
     setBenchMin("");
-    setBenchMax("");
+    setBenchMaxCost("");
     setDateFrom("");
     setDateTo("");
     startTransition(() => {
@@ -283,7 +285,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const urlPriceMin = searchParams.get("priceMin") || "";
     const urlPriceMax = searchParams.get("priceMax") || "";
     const urlBenchMin = searchParams.get("benchMin") || "";
-    const urlBenchMax = searchParams.get("benchMax") || "";
+    const urlBenchMaxCost = searchParams.get("benchMaxCost") || "";
     const urlDateFrom = searchParams.get("dateFrom") || "";
     const urlDateTo = searchParams.get("dateTo") || "";
 
@@ -294,7 +296,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setPriceMin(urlPriceMin);
     setPriceMax(urlPriceMax);
     setBenchMin(urlBenchMin);
-    setBenchMax(urlBenchMax);
+    setBenchMaxCost(urlBenchMaxCost);
     setDateFrom(urlDateFrom);
     setDateTo(urlDateTo);
     // Only re-sync when the URL actually changes (e.g. browser back/forward).
@@ -347,15 +349,21 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const dateActive = fromTs != null || toTs != null;
 
     // TerminalBench filters. When either bound is active, models without any
-    // benchmark data are excluded (per product spec). The max-cost filter
-    // also keeps models that don't have a cost value set.
+    // benchmark data are excluded (per product spec). The max-cost bound keeps
+    // models that have a score but no cost recorded.
     const parsedBenchMin = benchMin === "" ? NaN : Number(benchMin);
-    const parsedBenchMax = benchMax === "" ? NaN : Number(benchMax);
     const benchMinNum =
-      Number.isFinite(parsedBenchMin) && parsedBenchMin >= 0 ? parsedBenchMin : null;
-    const benchMaxNum =
-      Number.isFinite(parsedBenchMax) && parsedBenchMax >= 0 ? parsedBenchMax : null;
-    const benchActive = benchMinNum != null || benchMaxNum != null;
+      Number.isFinite(parsedBenchMin) && parsedBenchMin >= 0 && parsedBenchMin <= 1
+        ? parsedBenchMin
+        : null;
+
+    const parsedBenchMaxCost = benchMaxCost === "" ? NaN : Number(benchMaxCost);
+    const benchMaxCostNum =
+      Number.isFinite(parsedBenchMaxCost) && parsedBenchMaxCost >= 0
+        ? parsedBenchMaxCost
+        : null;
+
+    const benchActive = benchMinNum != null || benchMaxCostNum != null;
 
     const filtered = models.filter((model) => {
       const searchLower = search.toLowerCase();
@@ -389,15 +397,17 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
           (fromTs == null || model.created >= fromTs) &&
           (toTs == null || model.created <= toTs));
 
-      // TerminalBench filters. Models missing benchmark data are dropped when
-      // any benchmark bound is active. For the cost bound we additionally keep
-      // models that have a benchmark score but no cost recorded (cost=null).
+      // TerminalBench filters. When either bound is active, models missing
+      // benchmark data are dropped. The max-cost bound additionally keeps
+      // models that have a score but no `avgAttemptCostUsd` recorded.
       const bench = model.terminalBench;
       const matchesBench =
         !benchActive ||
         (bench != null &&
           (benchMinNum == null || bench.overallScore >= benchMinNum) &&
-          (benchMaxNum == null || bench.avgAttemptCostUsd <= benchMaxNum));
+          (benchMaxCostNum == null ||
+            bench.avgAttemptCostUsd == null ||
+            bench.avgAttemptCostUsd <= benchMaxCostNum));
 
       return (
         matchesSearch &&
@@ -425,13 +435,17 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     }
     if (sortBy === "bench-asc" || sortBy === "bench-desc") {
       return [...filtered].sort((a, b) => {
-        const aScore = a.terminalBench?.overallScore ?? 0;
-        const bScore = b.terminalBench?.overallScore ?? 0;
+        // Models with no benchmark data sink to the end regardless of direction.
+        const aHas = a.terminalBench != null;
+        const bHas = b.terminalBench != null;
+        if (aHas !== bHas) return aHas ? -1 : 1;
+        const aScore = a.terminalBench!.overallScore;
+        const bScore = b.terminalBench!.overallScore;
         return sortBy === "bench-asc" ? aScore - bScore : bScore - aScore;
       });
     }
     return filtered;
-  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMax, dateFrom, dateTo]);
+  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo]);
 
   const hasFilters =
     !!search ||
@@ -441,13 +455,13 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     !!priceMin ||
     !!priceMax ||
     !!benchMin ||
-    !!benchMax ||
+    !!benchMaxCost ||
     !!dateFrom ||
     !!dateTo;
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMax, dateFrom, dateTo]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo]);
 
   const visibleModels = useMemo(
     () => filteredModels.slice(0, visibleCount),
@@ -527,9 +541,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             onPriceMinChange={handlePriceMinChange}
             onPriceMaxChange={handlePriceMaxChange}
             benchMin={benchMin}
-            benchMax={benchMax}
+            benchMaxCost={benchMaxCost}
             onBenchMinChange={handleBenchMinChange}
-            onBenchMaxChange={handleBenchMaxChange}
+            onBenchMaxCostChange={handleBenchMaxCostChange}
             dateFrom={dateFrom}
             dateTo={dateTo}
             onDateFromChange={handleDateFromChange}

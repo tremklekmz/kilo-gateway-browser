@@ -34,9 +34,9 @@ interface SearchFilterProps {
   onPriceMinChange: (value: string) => void;
   onPriceMaxChange: (value: string) => void;
   benchMin: string;
-  benchMax: string;
+  benchMaxCost: string;
   onBenchMinChange: (value: string) => void;
-  onBenchMaxChange: (value: string) => void;
+  onBenchMaxCostChange: (value: string) => void;
   dateFrom: string;
   dateTo: string;
   onDateFromChange: (value: string) => void;
@@ -184,9 +184,9 @@ export function SearchFilter({
   onPriceMinChange,
   onPriceMaxChange,
   benchMin,
-  benchMax,
+  benchMaxCost,
   onBenchMinChange,
-  onBenchMaxChange,
+  onBenchMaxCostChange,
   dateFrom,
   dateTo,
   onDateFromChange,
@@ -201,14 +201,14 @@ export function SearchFilter({
   // Initializer-only — we deliberately do NOT re-sync on prop change so the
   // user's manual collapse choice is respected.
   const [expanded, setExpanded] = useState(
-    () => !!(priceMin || priceMax || benchMin || benchMax || dateFrom || dateTo)
+    () => !!(priceMin || priceMax || benchMin || benchMaxCost || dateFrom || dateTo)
   );
 
   const activeRangeCount =
     (priceMin ? 1 : 0) +
     (priceMax ? 1 : 0) +
     (benchMin ? 1 : 0) +
-    (benchMax ? 1 : 0) +
+    (benchMaxCost ? 1 : 0) +
     (dateFrom ? 1 : 0) +
     (dateTo ? 1 : 0);
 
@@ -222,11 +222,8 @@ export function SearchFilter({
     priceMinNum > priceMaxNum;
 
   const benchMinNum = benchMin === "" ? NaN : Number(benchMin);
-  const benchMaxNum = benchMax === "" ? NaN : Number(benchMax);
   const benchRangeInvalid =
-    Number.isFinite(benchMinNum) &&
-    Number.isFinite(benchMaxNum) &&
-    benchMinNum > benchMaxNum;
+    Number.isFinite(benchMinNum) && (benchMinNum < 0 || benchMinNum > 1);
 
   const dateFromMs = dateFrom === "" ? NaN : Date.parse(dateFrom);
   const dateToMs = dateTo === "" ? NaN : Date.parse(dateTo);
@@ -427,44 +424,63 @@ export function SearchFilter({
             )}
           </div>
 
-          {/* TerminalBench score range */}
-          <div className="flex-1 min-w-[260px]">
-            <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">
-              TerminalBench score{" "}
+          {/* Min benchmark result */}
+          <div className="flex-1 min-w-[200px]">
+            <label
+              htmlFor="bench-min"
+              className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2"
+            >
+              Min benchmark result{" "}
               <span className="text-zinc-600 font-normal normal-case tracking-normal">
                 (0–1)
               </span>
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                max="1"
-                step="0.01"
-                placeholder="Min"
-                value={benchMin}
-                onChange={(e) => onBenchMinChange(e.target.value)}
-                className="flex-1 min-w-0 px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
-              />
-              <span className="text-zinc-600 text-sm select-none">–</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                max="1"
-                step="0.01"
-                placeholder="Max"
-                value={benchMax}
-                onChange={(e) => onBenchMaxChange(e.target.value)}
-                className="flex-1 min-w-0 px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
-              />
-            </div>
+            <input
+              id="bench-min"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max="1"
+              step="0.01"
+              placeholder="e.g. 0.5"
+              value={benchMin}
+              onChange={(e) => onBenchMinChange(e.target.value)}
+              className="w-full px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
+            />
             {benchRangeInvalid && (
               <p className="mt-1.5 text-xs text-red-400">
-                Min benchmark is greater than max — no models will match.
+                Benchmark result must be between 0 and 1.
               </p>
             )}
+          </div>
+
+          {/* Max benchmark cost */}
+          <div className="flex-1 min-w-[200px]">
+            <label
+              htmlFor="bench-max-cost"
+              className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2"
+            >
+              Max benchmark cost{" "}
+              <span className="text-zinc-600 font-normal normal-case tracking-normal">
+                (USD / attempt)
+              </span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm pointer-events-none">
+                $
+              </span>
+              <input
+                id="bench-max-cost"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="No max"
+                value={benchMaxCost}
+                onChange={(e) => onBenchMaxCostChange(e.target.value)}
+                className="w-full pl-7 pr-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
+              />
+            </div>
           </div>
 
           {/* Created date range */}
