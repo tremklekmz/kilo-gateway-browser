@@ -38,6 +38,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Added price sorting options — "Price: Low to High" (`price-asc`) and "Price: High to Low" (`price-desc`) added to sort dropdown in SearchFilter; ModelsBrowser sorts using `calculateAveragePrice`; URL persistence via `?sort=price-asc` / `?sort=price-desc`
 - [x] Avg price range filter (priceMin / priceMax in $/1M tokens) and date range filter (dateFrom / dateTo, HTML5 date pickers); URL-persisted via `?priceMin=…&priceMax=…&dateFrom=…&dateTo=…`; presented in a collapsible "More filters" panel that auto-expands when any range is active and shows a count badge; models with `created === 0` are excluded from results when any date bound is active; inline warnings shown for `min > max` price or date ranges; shared `getAvgPricePerMillion` lambda inside `filteredModels` memo reused for both range filter and price sort
 - [x] Display `terminalBench.overallScore` and `mayTrainOnYourPrompts` on ModelCard — added `TerminalBench` interface and optional `terminalBench` / `mayTrainOnYourPrompts` fields to `AIModel` in `src/lib/types.ts`; new `formatPercent()` helper in `src/lib/utils.ts`; `TerminalBenchBadge` ("T-Bench 74.2%") shown in header badge row when `terminalBench` is present; `TrainingWarning` amber alert shown above stats (grid) / below description (list) when `mayTrainOnYourPrompts === true`
+- [x] TerminalBench filter + sort — added "Benchmark: Low to High" (`bench-asc`) and "Benchmark: High to Low" (`bench-desc`) sort options (sort by `terminalBench.overallScore`); added TerminalBench score range filter (`benchMin` / `benchMax`, 0–1 scale) inside the "More filters" panel; models missing `terminalBench` data are dropped when either benchmark bound is active; the max cost bound (`benchMax`) also keeps models that have a score but no `avgAttemptCostUsd` recorded; URL persistence via `?benchMin=…&benchMax=…&sort=bench-asc|bench-desc`
 
 ## Current Structure
 
@@ -118,6 +119,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-06-12 | Added TerminalBench sort options (Low/High by `overallScore`) and TerminalBench score range filter (min/max in 0–1 scale) inside the "More filters" panel; models without benchmark data are excluded when either bound is active; URL persistence via `?benchMin`, `?benchMax`, `?sort=bench-asc/bench-desc` |
 | 2026-06-12 | Display `terminalBench.overallScore` (as "T-Bench 74.2%" badge) and `mayTrainOnYourPrompts` (as amber warning) on ModelCard in both grid and list views; extended `AIModel` type and added `formatPercent` helper |
 | 2026-05-22 | Added avg-price and date from-to range filters to the AI Model Browser; collapsible "More filters" panel with count badge and auto-expand on URL params; URL persistence via `?priceMin/priceMax/dateFrom/dateTo`; integrates with existing search/provider/free/sort filters and "Load More" pagination |
 | 2026-05-20 | Added price sort options (Low to High / High to Low) to SearchFilter and ModelsBrowser; uses `calculateAveragePrice`; persisted in URL as `?sort=price-asc` / `?sort=price-desc` |
