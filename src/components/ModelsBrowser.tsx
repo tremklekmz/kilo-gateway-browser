@@ -302,7 +302,6 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     // Only re-sync when the URL actually changes (e.g. browser back/forward).
     // Omitting the state variables from deps prevents a feedback loop where
     // setState → re-render → effect re-runs → setState again causes blinking.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
