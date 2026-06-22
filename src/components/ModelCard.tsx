@@ -128,7 +128,7 @@ function TerminalBenchBadge({
   };
 
   const handleSummaryClick = (e: React.MouseEvent<HTMLElement>) => {
-    if (hasHover()) {
+    if (hasHover() && detailsRef.current?.open) {
       e.preventDefault();
     }
   };
