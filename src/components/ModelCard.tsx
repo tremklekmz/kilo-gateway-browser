@@ -107,33 +107,32 @@ function TerminalBenchBadge({
 }) {
   const costText =
     avgAttemptCostUsd == null ? "not recorded" : formatUsd(avgAttemptCostUsd);
-  const tooltip = `TerminalBench overall: ${formatPercent(
-    score,
-    1,
-  )}\nAvg attempt cost: ${costText}`;
 
   return (
-    <span
-      title={tooltip}
-      aria-label={tooltip}
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0 cursor-help"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="10"
-        height="10"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="4 17 10 11 4 5" />
-        <line x1="12" x2="20" y1="19" y2="19" />
-      </svg>
-      {formatPercent(score, 1)}
-    </span>
+    <details className="group relative inline-block shrink-0">
+      <summary className="list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-pointer select-none">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="4 17 10 11 4 5" />
+          <line x1="12" x2="20" y1="19" y2="19" />
+        </svg>
+        {formatPercent(score, 1)}
+      </summary>
+      <div className="hidden group-open:block group-hover:block absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-48 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs shadow-lg shadow-black/30">
+        <p className="font-semibold text-amber-400 mb-1">TerminalBench</p>
+        <p className="text-zinc-300">Overall: {formatPercent(score, 1)}</p>
+        <p className="text-zinc-400">Avg attempt cost: {costText}</p>
+      </div>
+    </details>
   );
 }
 
