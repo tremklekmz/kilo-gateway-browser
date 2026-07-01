@@ -1,9 +1,21 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useTransition } from "react";
+import { useState, useEffect, useMemo, useCallback, useTransition, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AIModel, ModelsResponse } from "@/lib/types";
-import { getProviderFromId, getUniqueProviders, isFreeModel, calculateAveragePrice } from "@/lib/utils";
+import {
+  areCostAssumptionsDefault,
+  COST_ASSUMPTIONS_STORAGE_KEY,
+  CostAssumptions,
+  DEFAULT_COST_ASSUMPTIONS,
+  getAveragePricePerMillion,
+  getProviderFromId,
+  getUniqueProviders,
+  isFreeModel,
+  normalizeCostAssumptions,
+  parseCostAssumptionParam,
+  serializeCostAssumptionParam,
+} from "@/lib/utils";
 import { ModelCard } from "./ModelCard";
 import { SearchFilter } from "./SearchFilter";
 import { ViewToggle } from "./ViewToggle";
@@ -82,6 +94,30 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
   );
 }
 
+function readStoredCostAssumptions(): CostAssumptions | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(COST_ASSUMPTIONS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CostAssumptions>;
+    return normalizeCostAssumptions(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredCostAssumptions(assumptions: CostAssumptions) {
+  if (typeof window === "undefined") return;
+  if (areCostAssumptionsDefault(assumptions)) {
+    window.localStorage.removeItem(COST_ASSUMPTIONS_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(
+    COST_ASSUMPTIONS_STORAGE_KEY,
+    JSON.stringify(normalizeCostAssumptions(assumptions)),
+  );
+}
+
 export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -121,6 +157,19 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   );
   const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
+  const [costAssumptions, setCostAssumptions] = useState<CostAssumptions>(() =>
+    normalizeCostAssumptions({
+      outputTokenShare: parseCostAssumptionParam(
+        searchParams.get("avgOutputShare"),
+        DEFAULT_COST_ASSUMPTIONS.outputTokenShare,
+      ),
+      inputCacheHitRate: parseCostAssumptionParam(
+        searchParams.get("avgCacheHitRate"),
+        DEFAULT_COST_ASSUMPTIONS.inputCacheHitRate,
+      ),
+    }),
+  );
+  const loadedStoredCostAssumptionsRef = useRef(false);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -142,6 +191,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     benchMaxCost?: string;
     dateFrom?: string;
     dateTo?: string;
+    costAssumptions?: CostAssumptions;
   }) => {
     const nextSearch = next?.search ?? search;
     const nextProvider = next?.selectedProvider ?? selectedProvider;
@@ -153,6 +203,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const nextBenchMaxCost = next?.benchMaxCost ?? benchMaxCost;
     const nextDateFrom = next?.dateFrom ?? dateFrom;
     const nextDateTo = next?.dateTo ?? dateTo;
+    const nextCostAssumptions = normalizeCostAssumptions(
+      next?.costAssumptions ?? costAssumptions,
+    );
 
     const params = new URLSearchParams();
     if (nextSearch) params.set("q", nextSearch);
@@ -165,13 +218,23 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     if (nextBenchMaxCost) params.set("benchMaxCost", nextBenchMaxCost);
     if (nextDateFrom) params.set("dateFrom", nextDateFrom);
     if (nextDateTo) params.set("dateTo", nextDateTo);
+    if (!areCostAssumptionsDefault(nextCostAssumptions)) {
+      params.set(
+        "avgOutputShare",
+        serializeCostAssumptionParam(nextCostAssumptions.outputTokenShare),
+      );
+      params.set(
+        "avgCacheHitRate",
+        serializeCostAssumptionParam(nextCostAssumptions.inputCacheHitRate),
+      );
+    }
 
     const queryString = params.toString();
     const newUrl = queryString ? `?${queryString}` : "/";
     startTransition(() => {
       router.replace(newUrl, { scroll: false });
     });
-  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, router, startTransition]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions, router, startTransition]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -230,6 +293,13 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     updateUrl({ dateTo: value });
   };
 
+  const handleCostAssumptionsChange = (value: CostAssumptions) => {
+    const normalized = normalizeCostAssumptions(value);
+    setCostAssumptions(normalized);
+    writeStoredCostAssumptions(normalized);
+    updateUrl({ costAssumptions: normalized });
+  };
+
   const handleReset = () => {
     setSearch("");
     setSelectedProvider("");
@@ -241,6 +311,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setBenchMaxCost("");
     setDateFrom("");
     setDateTo("");
+    setCostAssumptions(DEFAULT_COST_ASSUMPTIONS);
+    writeStoredCostAssumptions(DEFAULT_COST_ASSUMPTIONS);
     startTransition(() => {
       router.replace("/", { scroll: false });
     });
@@ -288,6 +360,16 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const urlBenchMaxCost = searchParams.get("benchMaxCost") || "";
     const urlDateFrom = searchParams.get("dateFrom") || "";
     const urlDateTo = searchParams.get("dateTo") || "";
+    const urlCostAssumptions = normalizeCostAssumptions({
+      outputTokenShare: parseCostAssumptionParam(
+        searchParams.get("avgOutputShare"),
+        DEFAULT_COST_ASSUMPTIONS.outputTokenShare,
+      ),
+      inputCacheHitRate: parseCostAssumptionParam(
+        searchParams.get("avgCacheHitRate"),
+        DEFAULT_COST_ASSUMPTIONS.inputCacheHitRate,
+      ),
+    });
 
     setSearch(urlSearch);
     setSelectedProvider(urlProvider);
@@ -299,9 +381,24 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setBenchMaxCost(urlBenchMaxCost);
     setDateFrom(urlDateFrom);
     setDateTo(urlDateTo);
+    setCostAssumptions(urlCostAssumptions);
     // Only re-sync when the URL actually changes (e.g. browser back/forward).
     // Omitting the state variables from deps prevents a feedback loop where
     // setState → re-render → effect re-runs → setState again causes blinking.
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (loadedStoredCostAssumptionsRef.current) return;
+    loadedStoredCostAssumptionsRef.current = true;
+
+    const hasUrlAssumptions =
+      searchParams.has("avgOutputShare") || searchParams.has("avgCacheHitRate");
+    if (hasUrlAssumptions) return;
+
+    const stored = readStoredCostAssumptions();
+    if (stored) {
+      setCostAssumptions(stored);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -316,18 +413,11 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const providers = useMemo(() => getUniqueProviders(models), [models]);
 
   const filteredModels = useMemo(() => {
-    // Shared per-million-token avg price helper, reused by both range filter and
-    // price sorting. calculateAveragePrice returns a per-token weighted avg, so
-    // we multiply by 1,000,000 to match the $/1M-tokens unit shown on ModelCard.
-    const getAvgPricePerMillion = (model: AIModel) =>
-      calculateAveragePrice({
-        input: parseFloat(model.pricing.prompt),
-        output: parseFloat(model.pricing.completion),
-        cacheRead:
-          model.pricing.input_cache_read != null
-            ? parseFloat(model.pricing.input_cache_read)
-            : null,
-      }) * 1_000_000;
+    // Shared per-million-token avg price helper, reused by both range filter
+    // and price sorting. Reads from the shared utility so the same formula
+    // powers ModelCard display, the range filter, and price sorting.
+    const getAvgPriceForModel = (model: AIModel) =>
+      getAveragePricePerMillion(model, costAssumptions);
 
     // Parse range bounds once. Empty strings or malformed values become null
     // (treated as "no bound on this side"). Negative price inputs are ignored.
@@ -382,7 +472,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       // ModelCard and in the filter inputs.
       const avgPerMillion =
         minPriceNum != null || maxPriceNum != null
-          ? getAvgPricePerMillion(model)
+          ? getAvgPriceForModel(model)
           : 0;
       const matchesPriceMin = minPriceNum == null || avgPerMillion >= minPriceNum;
       const matchesPriceMax = maxPriceNum == null || avgPerMillion <= maxPriceNum;
@@ -428,8 +518,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     if (sortBy === "price-asc" || sortBy === "price-desc") {
       return [...filtered].sort((a, b) =>
         sortBy === "price-asc"
-          ? getAvgPricePerMillion(a) - getAvgPricePerMillion(b)
-          : getAvgPricePerMillion(b) - getAvgPricePerMillion(a)
+          ? getAvgPriceForModel(a) - getAvgPriceForModel(b)
+          : getAvgPriceForModel(b) - getAvgPriceForModel(a)
       );
     }
     if (sortBy === "bench-asc" || sortBy === "bench-desc") {
@@ -445,7 +535,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       });
     }
     return filtered;
-  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo]);
+  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions]);
+
+  const costAssumptionsActive = !areCostAssumptionsDefault(costAssumptions);
 
   const hasFilters =
     !!search ||
@@ -457,11 +549,12 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     !!benchMin ||
     !!benchMaxCost ||
     !!dateFrom ||
-    !!dateTo;
+    !!dateTo ||
+    costAssumptionsActive;
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions]);
 
   const visibleModels = useMemo(
     () => filteredModels.slice(0, visibleCount),
@@ -552,6 +645,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             onReset={handleReset}
             totalCount={models.length}
             filteredCount={filteredModels.length}
+            costAssumptions={costAssumptions}
+            costAssumptionsActive={costAssumptionsActive}
+            onCostAssumptionsChange={handleCostAssumptionsChange}
           />
         )}
       </div>
@@ -574,7 +670,12 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
               }
             >
               {visibleModels.map((model) => (
-                <ModelCard key={model.id} model={model} view={view} />
+                <ModelCard
+                  key={model.id}
+                  model={model}
+                  view={view}
+                  costAssumptions={costAssumptions}
+                />
               ))}
             </div>
             {hasMore && <Pagination visibleCount={visibleModels.length} totalCount={filteredModels.length} onLoadMore={loadMore} />}

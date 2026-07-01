@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { formatProviderName } from "@/lib/utils";
+import {
+  CostAssumptions,
+  DEFAULT_COST_ASSUMPTIONS,
+  formatCostAssumptionInputValue,
+  formatCostAssumptionSummary,
+  formatProviderName,
+  normalizeCostAssumptions,
+} from "@/lib/utils";
 
 interface SearchFilterProps {
   search: string;
@@ -45,6 +52,9 @@ interface SearchFilterProps {
   onReset: () => void;
   totalCount: number;
   filteredCount: number;
+  costAssumptions: CostAssumptions;
+  costAssumptionsActive: boolean;
+  onCostAssumptionsChange: (value: CostAssumptions) => void;
 }
 
 function SearchIcon() {
@@ -195,13 +205,16 @@ export function SearchFilter({
   onReset,
   totalCount,
   filteredCount,
+  costAssumptions,
+  costAssumptionsActive,
+  onCostAssumptionsChange,
 }: SearchFilterProps) {
   // Auto-expand on initial mount when any range field is non-empty so a user
   // landing on a URL like `?priceMax=5` immediately sees the active values.
   // Initializer-only — we deliberately do NOT re-sync on prop change so the
   // user's manual collapse choice is respected.
   const [expanded, setExpanded] = useState(
-    () => !!(priceMin || priceMax || benchMin || benchMaxCost || dateFrom || dateTo)
+    () => !!(priceMin || priceMax || benchMin || benchMaxCost || dateFrom || dateTo || costAssumptionsActive)
   );
 
   const activeRangeCount =
@@ -210,7 +223,28 @@ export function SearchFilter({
     (benchMin ? 1 : 0) +
     (benchMaxCost ? 1 : 0) +
     (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0);
+    (dateTo ? 1 : 0) +
+    (costAssumptionsActive ? 1 : 0);
+
+  const normalizedCostAssumptions = normalizeCostAssumptions(costAssumptions);
+
+  const updateOutputShare = (rawPercent: string) => {
+    const pct = Number(rawPercent);
+    if (!Number.isFinite(pct)) return;
+    onCostAssumptionsChange({
+      ...normalizedCostAssumptions,
+      outputTokenShare: Math.min(1, Math.max(0, pct / 100)),
+    });
+  };
+
+  const updateCacheHitRate = (rawPercent: string) => {
+    const pct = Number(rawPercent);
+    if (!Number.isFinite(pct)) return;
+    onCostAssumptionsChange({
+      ...normalizedCostAssumptions,
+      inputCacheHitRate: Math.min(1, Math.max(0, pct / 100)),
+    });
+  };
 
   // Validation flags — both bounds must be present and parse to valid values
   // for a comparison to make sense; otherwise show no warning.
@@ -376,6 +410,65 @@ export function SearchFilter({
           id="more-filters-panel"
           className="flex flex-col md:flex-row gap-3 flex-wrap p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl"
         >
+          {/* Cost assumptions */}
+          <div className="flex-1 min-w-[280px] rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Cost assumptions
+                </h3>
+                <p className="mt-1 text-xs text-zinc-600 leading-relaxed">
+                  Avg, price sorting, and avg price filters use these values.
+                </p>
+              </div>
+              {costAssumptionsActive && (
+                <button
+                  type="button"
+                  onClick={() => onCostAssumptionsChange(DEFAULT_COST_ASSUMPTIONS)}
+                  className="shrink-0 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block">
+                <span className="block text-xs text-zinc-500 mb-1">Output token share (%)</span>
+                <input
+                  id="avg-output-share"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formatCostAssumptionInputValue(normalizedCostAssumptions.outputTokenShare)}
+                  onChange={(e) => updateOutputShare(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
+                />
+              </label>
+
+              <label className="block">
+                <span className="block text-xs text-zinc-500 mb-1">Input cache hit rate (%)</span>
+                <input
+                  id="avg-cache-hit-rate"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formatCostAssumptionInputValue(normalizedCostAssumptions.inputCacheHitRate)}
+                  onChange={(e) => updateCacheHitRate(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
+                />
+              </label>
+            </div>
+
+            <p className="mt-2 text-[11px] text-zinc-600">
+              Current: {formatCostAssumptionSummary(normalizedCostAssumptions)}
+            </p>
+          </div>
+
           {/* Avg price range */}
           <div className="flex-1 min-w-[260px]">
             <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">
@@ -384,6 +477,9 @@ export function SearchFilter({
                 ($/1M tokens)
               </span>
             </label>
+            <p className="mb-2 text-xs text-zinc-600">
+              Uses the cost assumptions above.
+            </p>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm pointer-events-none">

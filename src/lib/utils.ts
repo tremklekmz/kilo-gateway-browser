@@ -10,25 +10,136 @@ export interface ModelCostInfo {
 }
 
 /**
+ * User-controllable assumptions that shape the avg price calculation.
+ *
+ * `outputTokenShare` is the percent of total tokens that are output/completion.
+ * `inputCacheHitRate` is the percent of input/prompt tokens served from cache.
+ * Both values are ratios in [0, 1].
+ */
+export interface CostAssumptions {
+  outputTokenShare: number;
+  inputCacheHitRate: number;
+}
+
+export const DEFAULT_COST_ASSUMPTIONS: CostAssumptions = {
+  outputTokenShare: 0.1,
+  inputCacheHitRate: 7 / 9,
+};
+
+export const COST_ASSUMPTIONS_STORAGE_KEY = "kilo.avgPriceAssumptions.v1";
+
+function clampRatio(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
+}
+
+export function normalizeCostAssumptions(
+  assumptions: Partial<CostAssumptions> | null | undefined,
+): CostAssumptions {
+  return {
+    outputTokenShare: clampRatio(
+      assumptions?.outputTokenShare ?? DEFAULT_COST_ASSUMPTIONS.outputTokenShare,
+      DEFAULT_COST_ASSUMPTIONS.outputTokenShare,
+    ),
+    inputCacheHitRate: clampRatio(
+      assumptions?.inputCacheHitRate ?? DEFAULT_COST_ASSUMPTIONS.inputCacheHitRate,
+      DEFAULT_COST_ASSUMPTIONS.inputCacheHitRate,
+    ),
+  };
+}
+
+export function areCostAssumptionsDefault(assumptions: CostAssumptions): boolean {
+  const normalized = normalizeCostAssumptions(assumptions);
+  return (
+    Math.abs(normalized.outputTokenShare - DEFAULT_COST_ASSUMPTIONS.outputTokenShare) < 0.000001 &&
+    Math.abs(normalized.inputCacheHitRate - DEFAULT_COST_ASSUMPTIONS.inputCacheHitRate) < 0.000001
+  );
+}
+
+export function parseCostAssumptionParam(
+  value: string | null,
+  fallback: number,
+): number {
+  if (value == null || value.trim() === "") return fallback;
+  return clampRatio(Number(value), fallback);
+}
+
+export function serializeCostAssumptionParam(value: number): string {
+  return clampRatio(value, value).toFixed(6).replace(/\.?0+$/, "");
+}
+
+export function formatCostAssumptionPercent(value: number): string {
+  const pct = clampRatio(value, value) * 100;
+  return `${pct.toFixed(1).replace(/\.0$/, "")}%`;
+}
+
+export function formatCostAssumptionInputValue(value: number): string {
+  return (clampRatio(value, value) * 100).toFixed(1).replace(/\.0$/, "");
+}
+
+export function formatCostAssumptionSummary(assumptions: CostAssumptions): string {
+  const normalized = normalizeCostAssumptions(assumptions);
+  return `${formatCostAssumptionPercent(normalized.outputTokenShare)} output, ${formatCostAssumptionPercent(normalized.inputCacheHitRate)} cache hit`;
+}
+
+/**
  * Calculates a weighted average price per 1M tokens.
  *
- * When cacheRead is present and > 0:
- *   avg = (cacheRead × 0.7) + (input × 0.2) + (output × 0.1)
+ * With valid positive cacheRead pricing:
+ *   avg = output × outputShare
+ *        + input × (1 − outputShare) × (1 − cacheHitRate)
+ *        + cacheRead × (1 − outputShare) × cacheHitRate
  *
- * Otherwise:
- *   avg = (input × 0.9) + (output × 0.1)
+ * Without valid positive cacheRead pricing:
+ *   `effectiveCacheReadPrice` falls back to `input`, so the input total
+ *   weight becomes (1 − outputShare) and the formula reduces to:
+ *   `input × (1 − outputShare) + output × outputShare`.
+ *
+ * Default assumptions reproduce the original behavior exactly:
+ * - With cache: cacheRead×0.7 + input×0.2 + output×0.1
+ * - Without cache: input×0.9 + output×0.1
  */
-export function calculateAveragePrice(cost: ModelCostInfo): number {
+export function calculateAveragePrice(
+  cost: ModelCostInfo,
+  assumptions: CostAssumptions = DEFAULT_COST_ASSUMPTIONS,
+): number {
   const input = Number.isFinite(cost.input) ? cost.input : 0;
   const output = Number.isFinite(cost.output) ? cost.output : 0;
   const cacheRead =
     cost.cacheRead != null && Number.isFinite(cost.cacheRead)
       ? cost.cacheRead
       : 0;
-  if (cacheRead > 0) {
-    return cacheRead * 0.7 + input * 0.2 + output * 0.1;
-  }
-  return input * 0.9 + output * 0.1;
+  const normalized = normalizeCostAssumptions(assumptions);
+  const outputShare = normalized.outputTokenShare;
+  const inputShare = 1 - outputShare;
+  const cacheHitRate = normalized.inputCacheHitRate;
+  const effectiveCacheReadPrice = cacheRead > 0 ? cacheRead : input;
+  return (
+    output * outputShare +
+    input * inputShare * (1 - cacheHitRate) +
+    effectiveCacheReadPrice * inputShare * cacheHitRate
+  );
+}
+
+export function getAveragePricePerMillion(
+  model: AIModel,
+  assumptions: CostAssumptions = DEFAULT_COST_ASSUMPTIONS,
+): number {
+  return (
+    calculateAveragePrice(
+      {
+        input: parseFloat(model.pricing.prompt),
+        output: parseFloat(model.pricing.completion),
+        cacheRead:
+          model.pricing.input_cache_read != null
+            ? parseFloat(model.pricing.input_cache_read)
+            : null,
+      },
+      assumptions,
+    ) * 1_000_000
+  );
 }
 
 export function getProviderFromId(modelId: string): string {
