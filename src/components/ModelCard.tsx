@@ -4,8 +4,11 @@ import React, { useState, useRef, useEffect, useId } from "react";
 import { AIModel } from "@/lib/types";
 import {
   calculateAveragePrice,
+  CostAssumptions,
+  DEFAULT_COST_ASSUMPTIONS,
   formatContextLength,
   formatCreatedDate,
+  formatCostAssumptionSummary,
   formatPercent,
   formatPrice,
   formatProviderName,
@@ -16,6 +19,7 @@ import {
 interface ModelCardProps {
   model: AIModel;
   view: "grid" | "list";
+  costAssumptions?: CostAssumptions;
 }
 
 function CopyIcon({ copied }: { copied: boolean }) {
@@ -370,7 +374,7 @@ function ExpandableDescription({
   );
 }
 
-export function ModelCard({ model, view }: ModelCardProps) {
+export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTIONS }: ModelCardProps) {
   const [copied, setCopied] = useState(false);
   const provider = getProviderFromId(model.id);
   const free = isFreeModel(model);
@@ -402,15 +406,19 @@ export function ModelCard({ model, view }: ModelCardProps) {
   // forward the result to formatPrice, which normalises to $/1M for display.
   // NaN/Infinity from malformed strings are clamped to 0 inside the utility.
   const avgPrice = formatPrice(
-    calculateAveragePrice({
-      input: parseFloat(model.pricing.prompt),
-      output: parseFloat(model.pricing.completion),
-      cacheRead:
-        model.pricing.input_cache_read != null
-          ? parseFloat(model.pricing.input_cache_read)
-          : null,
-    }),
+    calculateAveragePrice(
+      {
+        input: parseFloat(model.pricing.prompt),
+        output: parseFloat(model.pricing.completion),
+        cacheRead:
+          model.pricing.input_cache_read != null
+            ? parseFloat(model.pricing.input_cache_read)
+            : null,
+      },
+      costAssumptions,
+    ),
   );
+  const avgAssumptionSummary = formatCostAssumptionSummary(costAssumptions);
 
   if (view === "list") {
     return (
@@ -465,7 +473,9 @@ export function ModelCard({ model, view }: ModelCardProps) {
                 {avgPrice}
               </span>
             </span>
-            <span className="text-zinc-600 text-[10px]">per 1M tokens</span>
+            <span className="text-zinc-600 text-[10px]">
+              per 1M tokens · {avgAssumptionSummary}
+            </span>
             <span className="flex items-center gap-1 font-mono text-zinc-600 text-[11px]">
               {model.id}
             </span>
@@ -540,7 +550,9 @@ export function ModelCard({ model, view }: ModelCardProps) {
           <StatPill label="In" value={promptPrice} />
           <StatPill label="Out" value={completionPrice} />
         </div>
-        <p className="text-[10px] text-zinc-600 text-center mb-2 -mt-1">per 1M tokens</p>
+        <p className="text-[10px] text-zinc-600 text-center mb-2 -mt-1">
+          per 1M tokens · {avgAssumptionSummary}
+        </p>
 
         {/* Created date */}
         {createdDate && (
