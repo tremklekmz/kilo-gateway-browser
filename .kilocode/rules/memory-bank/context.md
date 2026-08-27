@@ -59,6 +59,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 | `src/components/SkeletonCard.tsx` | Loading skeleton placeholders | ✅ Ready |
 | `src/lib/types.ts` | TypeScript interfaces | ✅ Ready |
 | `src/lib/utils.ts` | Helper functions | ✅ Ready |
+| `PRODUCT.md` | Impeccable product record | ✅ Updated |
 | `src/lib/constants.ts` | Constants (API URL) | ✅ Ready |
 | `README.md` | Project documentation | ✅ Ready |
 | `.kilocode/` | AI context & recipes | ✅ Ready |
@@ -70,6 +71,13 @@ The template is ready. Next steps depend on user requirements:
 1. What type of application to build
 2. What features are needed
 3. Design/branding preferences
+
+## Recent Changes (2026-08-27)
+
+- PRODUCT.md rewritten: success moment is an informed overview (newest releases lead); copy-ID is a secondary action.
+- ModelsBrowser defaults to newest-first sort ("Gateway order" now opt-in via sort dropdown); reset and URL-sync fallback follow the new default; `created === 0` placeholders sink to the end.
+- NewBadge (violet NEW pill) on grid and list cards for models released within 14 days; `isNewModel()` + `NEW_MODEL_WINDOW_MS` added to utils.ts.
+- Hero copy ("Browse AI Models" → "Latest AI Models") and layout metadata description updated for the recency-first positioning.
 
 ## Quick Start Guide
 
@@ -113,8 +121,6 @@ export async function GET() {
 |--------|------|----------|
 | Add Database | `.kilocode/recipes/add-database.md` | Data persistence with Drizzle + SQLite |
 
-## Pending Improvements
-
 - [ ] Add more recipes (auth, email, etc.)
 - [ ] Add example components
 - [ ] Add testing setup recipe
@@ -123,6 +129,7 @@ export async function GET() {
 
 | Date | Changes |
 |------|---------|
+| 2026-08-28 | Impeccable remediation wave (score 22/40 → target higher): relevance-ranked search (utils `relevanceScore`, session-only — no new URL param) with "Sorted by relevance" sort-label affordance; provider filter replaced by searchable multi-select combobox (CSV `?provider=a,b`, keyboard/WAI-ARIA complete, mobile bottom sheet); unpriced models excluded by price filters now counted + announced (status line + amber EmptyState chip); view mode URL-persisted (`?view=list`); Reset is filters-only (localStorage assumptions safe); clamped shared assumption URLs (`avgOutputShare=999`) show adjustment notice; freeOnly+price-range conflict hint; debounced search URL writes; amber reserved for training warning (TerminalBench → sky, audio modality → zinc); card title `(free)/($$$$)` suffixes stripped; grid assumption footnote → Avg pill tooltip ("Avg $/1M"); FREE/NEW badges in header right slot; modality badges 11px; `role="status"` removed from static TrainingWarning; skeleton badge-row placeholder (no reflow jump); violet-gradient logo → flat zinc tile (detector now clean); ErrorState copy humanized with raw message demoted. New utils exports: `SortBy`, `relevanceScore`, `hasPublishedPrice`, `splitProviderParam`. |
 | 2026-07-01 | Added customizable Avg price cost assumptions: output token share and input cache hit rate controls in More filters; shared formula now drives ModelCard Avg display, price sorting, and Avg price range filtering; URL params `avgOutputShare` / `avgCacheHitRate` plus localStorage persist user assumptions |
 | 2026-06-12 | Added TerminalBench sort options (Low/High by `overallScore`; models without benchmark data sorted to the end) and two independent single-value filters — "Min benchmark result" (0–1) and "Max benchmark cost" (USD) — inside the "More filters" panel; models without benchmark data are excluded when either bound is active; URL persistence via `?benchMin`, `?benchMaxCost`, `?sort=bench-asc/bench-desc` |
 | 2026-06-22 | Fixed TerminalBenchBadge mobile UX: replaced `title` attribute tooltip (not shown on touch devices) with native `<details>`/`<summary>` toggle — zero JS, tap on mobile, hover on desktop via CSS group-hover |

@@ -4,6 +4,7 @@ A modern, high-performance AI model explorer built with Next.js 16, React 19, an
 
 ## Features
 
+- **Recency-First Overview**: Opens sorted by release date; models released in the last 14 days carry a NEW badge, so the latest versions lead.
 - **Live Model Browsing**: Fetches real-time data from the Kilo Gateway API.
 - **Advanced Filtering**: Filter by provider, free/paid status, and search by name or ID.
 - **Modality Badges**: Visual indicators for Text, Image, Audio, and Video capabilities.

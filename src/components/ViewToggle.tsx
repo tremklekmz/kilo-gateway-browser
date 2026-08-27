@@ -53,11 +53,17 @@ function ListIcon({ active }: { active: boolean }) {
 
 export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
   return (
-    <div className="flex items-center gap-1 p-1 bg-zinc-900 border border-zinc-800 rounded-xl">
+    <div
+      className="flex items-center gap-1 p-1 bg-zinc-900 border border-zinc-800 rounded-xl"
+      role="group"
+      aria-label="Layout"
+    >
       <button
         onClick={() => onViewChange("grid")}
         title="Grid view"
-        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ${
+        aria-label="Grid view"
+        aria-pressed={view === "grid"}
+        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
           view === "grid"
             ? "bg-zinc-700 shadow-sm"
             : "hover:bg-zinc-800"
@@ -68,7 +74,9 @@ export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
       <button
         onClick={() => onViewChange("list")}
         title="List view"
-        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ${
+        aria-label="List view"
+        aria-pressed={view === "list"}
+        className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
           view === "list"
             ? "bg-zinc-700 shadow-sm"
             : "hover:bg-zinc-800"

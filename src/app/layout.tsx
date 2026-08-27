@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Kilo Gateway — AI Model Explorer",
   description:
-    "Browse and discover AI models available through the Kilo Gateway. Search by name, filter by provider, and copy model IDs instantly.",
+    "See the latest AI models on the Kilo Gateway at a glance — newest releases first, with pricing, context, and benchmarks side by side.",
 };
 
 export default function RootLayout({

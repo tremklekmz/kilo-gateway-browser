@@ -105,11 +105,15 @@ export function calculateAveragePrice(
   cost: ModelCostInfo,
   assumptions: CostAssumptions = DEFAULT_COST_ASSUMPTIONS,
 ): number {
+  // Negative prices are unpublished "-1" sentinels (auto-router models): the
+  // average cannot be computed, so propagate NaN rather than clamping to a
+  // value that would display as "Free" and mislead.
   const input = Number.isFinite(cost.input) ? cost.input : 0;
   const output = Number.isFinite(cost.output) ? cost.output : 0;
+  if (input < 0 || output < 0) return NaN;
   const cacheRead =
     cost.cacheRead != null && Number.isFinite(cost.cacheRead)
-      ? cost.cacheRead
+      ? Math.max(0, cost.cacheRead)
       : 0;
   const normalized = normalizeCostAssumptions(assumptions);
   const outputShare = normalized.outputTokenShare;
@@ -247,7 +251,12 @@ export function formatPercent(value: number, fractionDigits = 1): string {
 
 export function formatPrice(price: string | number): string {
   const num = typeof price === "number" ? price : parseFloat(price);
-  if (!Number.isFinite(num) || num === 0) return "Free";
+  // NaN: average could not be computed (unpublished input prices).
+  if (!Number.isFinite(num)) return "Varies";
+  if (num === 0) return "Free";
+  // Negative pricing (e.g. "-1" sentinels from auto-router models) means the
+  // gateway has not published a real per-token price: display "Varies".
+  if (num < 0) return "Varies";
   if (num < 0.000001) return `$${(num * 1_000_000).toFixed(4)}`;
   return `$${(num * 1_000_000).toFixed(2)}`;
 }
@@ -268,6 +277,17 @@ export function isFreeModel(model: AIModel): boolean {
 }
 
 /**
+ * True when the model is a recent release: real `created` timestamp within
+ * the last 14 days (relative to now). Routers/meta models (created === 0)
+ * are never "new".
+ */
+export function isNewModel(model: AIModel): boolean {
+  if (!model.created) return false;
+  const ageMs = Date.now() - model.created * 1000;
+  return ageMs >= 0 && ageMs < NEW_MODEL_WINDOW_MS;
+}
+
+/**
  * Formats a Unix timestamp (seconds) into a human-readable date string.
  * Returns null if the timestamp is 0 (used for meta models / routers).
  * Format: "15 Jan 2024" — unambiguous, never US month/day/year.
@@ -280,4 +300,57 @@ export function formatCreatedDate(timestamp: number): string | null {
     month: "short",
     year: "numeric",
   });
+}
+
+/** How long after release a model is flagged as NEW on cards (14 days). */
+export const NEW_MODEL_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
+export type SortBy =
+  | "default"
+  | "newest"
+  | "oldest"
+  | "price-asc"
+  | "price-desc"
+  | "bench-asc"
+  | "bench-desc";
+
+/**
+ * Case-insensitive relevance score for search ordering.
+ * Name exact-trim match 100, name prefix 80, name includes 60,
+ * id includes 40, description includes 20, else 0.
+ * Ties are broken by the caller via `created` descending.
+ */
+export function relevanceScore(model: AIModel, query: string): number {
+  const q = query.trim().toLowerCase();
+  if (!q) return 0;
+  const name = model.name.toLowerCase();
+  const id = model.id.toLowerCase();
+  const description = (model.description ?? "").toLowerCase();
+  if (name === q) return 100;
+  if (name.startsWith(q)) return 80;
+  if (name.includes(q)) return 60;
+  if (id.includes(q)) return 40;
+  if (description.includes(q)) return 20;
+  return 0;
+}
+
+/**
+ * True unless the average price is NaN, which happens only when pricing
+ * carries the unpublished "-1" sentinels (auto-router models).
+ */
+export function hasPublishedPrice(model: AIModel): boolean {
+  return !Number.isNaN(
+    calculateAveragePrice({
+      input: parseFloat(model.pricing.prompt),
+      output: parseFloat(model.pricing.completion),
+    }),
+  );
+}
+
+/** Splits the `provider` URL param CSV into trimmed, non-empty parts. */
+export function splitProviderParam(provider: string): string[] {
+  return provider
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
 }

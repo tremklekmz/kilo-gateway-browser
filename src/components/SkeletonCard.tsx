@@ -31,7 +31,11 @@ export function SkeletonCard({ view }: SkeletonCardProps) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="h-5 w-3/4 bg-zinc-700 rounded mb-2" />
-          <div className="h-4 w-1/2 bg-zinc-800 rounded" />
+          <div className="flex flex-wrap gap-1.5 mb-1.5">
+            <div className="h-4 w-14 bg-zinc-800 rounded-full" />
+            <div className="h-4 w-10 bg-zinc-800 rounded-full" />
+            <div className="h-4 w-12 bg-zinc-800 rounded-full" />
+          </div>
         </div>
         <div className="h-5 w-12 bg-zinc-800 rounded-full ml-2" />
       </div>

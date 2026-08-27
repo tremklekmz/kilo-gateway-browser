@@ -14,6 +14,7 @@ import {
   formatProviderName,
   getProviderFromId,
   isFreeModel,
+  isNewModel,
 } from "@/lib/utils";
 
 interface ModelCardProps {
@@ -96,10 +97,27 @@ function FreeBadge() {
   );
 }
 
+function NewBadge() {
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-violet-500/15 text-violet-300 border border-violet-400/30 shrink-0">
+      NEW
+    </span>
+  );
+}
+
 function formatUsd(value: number, fractionDigits = 2): string {
   if (!Number.isFinite(value)) return "—";
   if (value >= 100) return `$${value.toFixed(0)}`;
+
   return `$${value.toFixed(fractionDigits)}`;
+}
+
+/**
+ * Strips marketing suffixes the gateway appends to display names,
+ * e.g. "Foo (free)" or "Bar ($$$)" — the badges/prices already say it.
+ */
+function displayName(name: string): string {
+  return name.replace(/\s*\((free|\$+)\)\s*$/i, "");
 }
 
 function TerminalBenchBadge({
@@ -148,7 +166,7 @@ function TerminalBenchBadge({
         onClick={handleSummaryClick}
         aria-label={ariaLabel}
         aria-describedby={tooltipId}
-        className="list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-pointer select-none"
+        className="list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20 cursor-pointer select-none"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -171,7 +189,7 @@ function TerminalBenchBadge({
         role="tooltip"
         className="hidden group-open:block absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-48 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs shadow-lg shadow-black/30"
       >
-        <p className="font-semibold text-amber-400 mb-1">TerminalBench</p>
+        <p className="font-semibold text-sky-400 mb-1">TerminalBench</p>
         <p className="text-zinc-300">Overall: {formatPercent(score, 1)}</p>
         <p className="text-zinc-400">Avg attempt cost: {costText}</p>
       </div>
@@ -181,10 +199,7 @@ function TerminalBenchBadge({
 
 function TrainingWarning() {
   return (
-    <div
-      role="status"
-      className="flex items-start gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5"
-    >
+    <div className="flex items-start gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="12"
@@ -235,7 +250,7 @@ const MODALITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; co
         <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
       </svg>
     ),
-    color: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    color: "bg-zinc-700/50 text-zinc-300 border-zinc-600/30",
   },
   video: {
     label: "Video",
@@ -260,7 +275,7 @@ function ModalityBadges({ modalities }: { modalities: string[] }) {
         return (
           <span
             key={mod}
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${cfg.color}`}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${cfg.color}`}
           >
             {cfg.icon}
             {cfg.label}
@@ -274,22 +289,28 @@ function ModalityBadges({ modalities }: { modalities: string[] }) {
 function StatPill({
   label,
   value,
+  info,
 }: {
   label: string;
   value: string;
+  /** Tooltip + accessible description for the pill (e.g. cost assumptions). */
+  info?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0">
+    <div
+      className="flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0"
+      title={info}
+      aria-label={info ? `${label}: ${value} — ${info}` : undefined}
+    >
       <span className="text-xs text-zinc-500 font-medium uppercase tracking-wide leading-none mb-1">
         {label}
       </span>
-      <span className="text-sm font-semibold text-zinc-200 leading-none truncate w-full text-center">
+      <span className="text-sm font-semibold text-zinc-300 leading-none truncate w-full text-center">
         {value}
       </span>
     </div>
   );
 }
-
 function ExpandableDescription({
   text,
   lineClamp,
@@ -365,7 +386,7 @@ function ExpandableDescription({
             setExpanded((v) => !v);
           }}
           aria-expanded={expanded}
-          className="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium"
+          className="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded"
         >
           {expanded ? "Show less" : "Show more"}
         </button>
@@ -378,6 +399,7 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
   const [copied, setCopied] = useState(false);
   const provider = getProviderFromId(model.id);
   const free = isFreeModel(model);
+  const isNew = isNewModel(model);
 
   const handleCopy = async () => {
     try {
@@ -426,10 +448,11 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <h3 className="text-sm font-semibold text-zinc-100 truncate">
-              {model.name}
+              {displayName(model.name)}
             </h3>
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
+            {isNew && <NewBadge />}
             {model.terminalBench && (
               <TerminalBenchBadge
                 score={model.terminalBench.overallScore}
@@ -450,37 +473,37 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
               <TrainingWarning />
             </div>
           )}
-          <div className="flex flex-wrap gap-3 text-xs text-zinc-500">
+          <div className="flex flex-wrap gap-3 text-xs text-zinc-400">
             <span className="flex items-center gap-1">
-              <span className="text-zinc-600">Context:</span>
+              <span className="text-zinc-500">Context:</span>
               <span className="text-zinc-300 font-medium">{contextLength}</span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-600">In:</span>
+              <span className="text-zinc-500">In:</span>
               <span className={`font-medium ${free ? "text-emerald-400" : "text-zinc-300"}`}>
                 {promptPrice}
               </span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-600">Out:</span>
+              <span className="text-zinc-500">Out:</span>
               <span className={`font-medium ${free ? "text-emerald-400" : "text-zinc-300"}`}>
                 {completionPrice}
               </span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-600">Avg:</span>
+              <span className="text-zinc-500">Avg:</span>
               <span className={`font-medium ${free ? "text-emerald-400" : "text-zinc-300"}`}>
                 {avgPrice}
               </span>
             </span>
-            <span className="text-zinc-600 text-[10px]">
-              per 1M tokens · {avgAssumptionSummary}
+            <span className="text-zinc-400 text-[10px]">
+              per 1M · {avgAssumptionSummary}
             </span>
-            <span className="flex items-center gap-1 font-mono text-zinc-600 text-[11px]">
+            <span className="flex items-center gap-1 font-mono text-zinc-400 text-[11px]">
               {model.id}
             </span>
             {createdDate && (
-              <span className="flex items-center gap-1 text-zinc-600 text-[11px]">
+              <span className="flex items-center gap-1 text-zinc-400 text-[11px]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
                 </svg>
@@ -491,10 +514,10 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
         </div>
         <button
           onClick={handleCopy}
-          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border ${
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
             copied
               ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-              : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-200 hover:border-zinc-600"
+              : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-600"
           }`}
         >
           <CopyIcon copied={copied} />
@@ -510,11 +533,10 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-zinc-100 leading-snug mb-1.5 line-clamp-2">
-            {model.name}
+            {displayName(model.name)}
           </h3>
           <div className="flex flex-wrap gap-1.5">
             <ProviderBadge provider={provider} />
-            {free && <FreeBadge />}
             {model.terminalBench && (
               <TerminalBenchBadge
                 score={model.terminalBench.overallScore}
@@ -524,8 +546,13 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
         </div>
+        {(free || isNew) && (
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            {free && <FreeBadge />}
+            {isNew && <NewBadge />}
+          </div>
+        )}
       </div>
-
       {/* Description */}
       {model.description && (
         <div className="mb-4 flex-1">
@@ -536,8 +563,6 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
           />
         </div>
       )}
-
-      {/* Stats */}
       <div className="mt-auto">
         {model.mayTrainOnYourPrompts && (
           <div className="mb-3">
@@ -546,17 +571,18 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
         )}
         <div className="grid grid-cols-2 gap-2 mb-3">
           <StatPill label="Context" value={contextLength} />
-          <StatPill label="Avg" value={avgPrice} />
+          <StatPill
+            label="Avg $/1M"
+            value={avgPrice}
+            info={`Avg ${avgPrice} per 1M tokens — assumes ${avgAssumptionSummary}. Adjust in More filters.`}
+          />
           <StatPill label="In" value={promptPrice} />
           <StatPill label="Out" value={completionPrice} />
         </div>
-        <p className="text-[10px] text-zinc-600 text-center mb-2 -mt-1">
-          per 1M tokens · {avgAssumptionSummary}
-        </p>
 
         {/* Created date */}
         {createdDate && (
-          <p className="flex items-center justify-center gap-1 text-[10px] text-zinc-600 mb-2">
+          <p className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 mb-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
             </svg>
@@ -566,16 +592,16 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
 
         {/* Model ID + Copy */}
         <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/40 border border-zinc-700/50">
-          <code className="flex-1 text-[11px] text-zinc-500 font-mono truncate">
+          <code className="flex-1 text-[11px] text-zinc-400 font-mono truncate">
             {model.id}
           </code>
           <button
             onClick={handleCopy}
             title="Copy model ID"
-            className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+            className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
               copied
                 ? "bg-emerald-500/10 text-emerald-400"
-                : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-700"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
             }`}
           >
             <CopyIcon copied={copied} />

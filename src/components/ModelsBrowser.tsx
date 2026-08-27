@@ -8,13 +8,20 @@ import {
   COST_ASSUMPTIONS_STORAGE_KEY,
   CostAssumptions,
   DEFAULT_COST_ASSUMPTIONS,
+  formatCostAssumptionSummary,
+  formatPercent,
+  formatProviderName,
   getAveragePricePerMillion,
   getProviderFromId,
   getUniqueProviders,
+  hasPublishedPrice,
   isFreeModel,
   normalizeCostAssumptions,
   parseCostAssumptionParam,
+  relevanceScore,
   serializeCostAssumptionParam,
+  SortBy,
+  splitProviderParam,
 } from "@/lib/utils";
 import { ModelCard } from "./ModelCard";
 import { SearchFilter } from "./SearchFilter";
@@ -24,6 +31,19 @@ import { Pagination } from "./Pagination";
 import { MODELS_API_URL } from "@/lib/constants";
 
 const PAGE_SIZE = 40;
+
+const SORT_VALUES: readonly SortBy[] = [
+  "default",
+  "newest",
+  "oldest",
+  "price-asc",
+  "price-desc",
+  "bench-asc",
+  "bench-desc",
+];
+
+/** Suffix identifying the amber "unpriced hidden" chip in the EmptyState chip row. */
+const UNPRICED_CHIP_SUFFIX = "unpriced hidden by price filter";
 
 interface ModelsBrowserProps {
   /** Models pre-fetched on the server. When provided, no client-side fetch is needed.
@@ -53,7 +73,10 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         </svg>
       </div>
       <h3 className="text-lg font-semibold text-zinc-200 mb-2">Failed to load models</h3>
-      <p className="text-sm text-zinc-500 mb-6 max-w-sm">{message}</p>
+      <p className="text-sm text-zinc-400 mb-1 max-w-sm">
+        Couldn&apos;t reach the gateway API. Check your connection and try again.
+      </p>
+      <p className="text-xs text-zinc-600 max-w-sm mb-6">{message}</p>
       <button
         onClick={onRetry}
         className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors duration-200"
@@ -64,7 +87,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({
+  hasFilters,
+  filterChips,
+  onReset,
+}: {
+  hasFilters: boolean;
+  filterChips: string[];
+  onReset: () => void;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <div className="w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-4">
@@ -84,12 +115,36 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
           <path d="m21 21-4.3-4.3" />
         </svg>
       </div>
-      <h3 className="text-lg font-semibold text-zinc-300 mb-2">No models found</h3>
-      <p className="text-sm text-zinc-500">
+      <h3 className="text-lg font-semibold text-zinc-200 mb-2">No models found</h3>
+      <p className="text-sm text-zinc-400">
         {hasFilters
-          ? "Try adjusting your search or filter criteria."
+          ? "No models match the active filters."
           : "No models are available at this time."}
       </p>
+      {hasFilters && filterChips.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-1.5 mt-4 max-w-md">
+          {filterChips.map((chip, i) => (
+            <span
+              key={`${chip}-${i}`}
+              className={
+                chip.endsWith(UNPRICED_CHIP_SUFFIX)
+                  ? "px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20"
+                  : "px-2 py-0.5 rounded-full text-xs bg-zinc-800/80 text-zinc-300 border border-zinc-700"
+              }
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      )}
+      {hasFilters && (
+        <button
+          onClick={onReset}
+          className="mt-6 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+        >
+          Clear all filters
+        </button>
+      )}
     </div>
   );
 }
@@ -131,24 +186,10 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [selectedProvider, setSelectedProvider] = useState(searchParams.get("provider") || "");
   const [freeOnly, setFreeOnly] = useState(searchParams.get("free") === "true");
-  const [sortBy, setSortBy] = useState<
-    | "default"
-    | "newest"
-    | "oldest"
-    | "price-asc"
-    | "price-desc"
-    | "bench-asc"
-    | "bench-desc"
-  >(
-    (searchParams.get("sort") as
-      | "default"
-      | "newest"
-      | "oldest"
-      | "price-asc"
-      | "price-desc"
-      | "bench-asc"
-      | "bench-desc") || "default"
-  );
+  const [sortBy, setSortBy] = useState<SortBy>(() => {
+    const raw = searchParams.get("sort");
+    return (SORT_VALUES as readonly string[]).includes(raw ?? "") ? (raw as SortBy) : "newest";
+  });
   const [priceMin, setPriceMin] = useState(searchParams.get("priceMin") || "");
   const [priceMax, setPriceMax] = useState(searchParams.get("priceMax") || "");
   const [benchMin, setBenchMin] = useState(searchParams.get("benchMin") || "");
@@ -170,21 +211,54 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     }),
   );
   const loadedStoredCostAssumptionsRef = useRef(false);
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const [view, setView] = useState<"grid" | "list">(
+    searchParams.get("view") === "list" ? "list" : "grid"
+  );
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Shared URLs can carry raw cost-assumption params outside 0–1 (e.g.
+  // ?avgOutputShare=999). normalizeCostAssumptions clamps them silently, so
+  // the recipient would otherwise see different numbers than the sender
+  // without any notice. Detect that divergence and surface a dismissible hint.
+  const [assumptionsAdjustedNotice, setAssumptionsAdjustedNotice] = useState(false);
+
+  // True when a raw URL param holds a value outside 0–1 (e.g. 999, -3, or a
+  // non-number): parseCostAssumptionParam clamps/falls back silently, so the
+  // recipient's normalized assumptions differ from the sender's raw numbers.
+  // Params absent from the URL contributed a fallback, not a shared value,
+  // so they never count as diverged.
+  const rawAssumptionsDiverged = useMemo(() => {
+    const diverged = (param: string) => {
+      const raw = searchParams.get(param);
+      if (raw == null || raw.trim() === "") return false;
+      const value = Number(raw);
+      if (!Number.isFinite(value)) return true;
+      return value < 0 || value > 1;
+    };
+    return diverged("avgOutputShare") || diverged("avgCacheHitRate");
+  }, [searchParams]);
+
+  // Sync the notice to URL changes: show it whenever the incoming URL carries
+  // diverged raw params, hide it when they no longer do. Dismissal below only
+  // suppresses the current divergence — a newly shared URL re-triggers it.
+  useEffect(() => {
+    if (rawAssumptionsDiverged) {
+      setAssumptionsAdjustedNotice(true);
+    } else {
+      setAssumptionsAdjustedNotice(false);
+    }
+  }, [rawAssumptionsDiverged]);
+
+  // Session-only flag: once the user explicitly picks a sort, relevance ordering
+  // stands down until page reload. Never a URL param — a shared ?q=... URL
+  // reproduces relevance behavior naturally on load.
+  const userPickedSortRef = useRef(false);
 
   const updateUrl = useCallback((next?: {
     search?: string;
     selectedProvider?: string;
     freeOnly?: boolean;
-    sortBy?:
-      | "default"
-      | "newest"
-      | "oldest"
-      | "price-asc"
-      | "price-desc"
-      | "bench-asc"
-      | "bench-desc";
+    sortBy?: SortBy;
     priceMin?: string;
     priceMax?: string;
     benchMin?: string;
@@ -192,6 +266,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     dateFrom?: string;
     dateTo?: string;
     costAssumptions?: CostAssumptions;
+    view?: "grid" | "list";
   }) => {
     const nextSearch = next?.search ?? search;
     const nextProvider = next?.selectedProvider ?? selectedProvider;
@@ -206,12 +281,13 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const nextCostAssumptions = normalizeCostAssumptions(
       next?.costAssumptions ?? costAssumptions,
     );
+    const nextView = next?.view ?? view;
 
     const params = new URLSearchParams();
     if (nextSearch) params.set("q", nextSearch);
     if (nextProvider) params.set("provider", nextProvider);
     if (nextFreeOnly) params.set("free", "true");
-    if (nextSortBy !== "default") params.set("sort", nextSortBy);
+    if (nextSortBy !== "newest") params.set("sort", nextSortBy);
     if (nextPriceMin) params.set("priceMin", nextPriceMin);
     if (nextPriceMax) params.set("priceMax", nextPriceMax);
     if (nextBenchMin) params.set("benchMin", nextBenchMin);
@@ -228,17 +304,36 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         serializeCostAssumptionParam(nextCostAssumptions.inputCacheHitRate),
       );
     }
+    if (nextView !== "grid") params.set("view", nextView);
 
     const queryString = params.toString();
     const newUrl = queryString ? `?${queryString}` : "/";
     startTransition(() => {
       router.replace(newUrl, { scroll: false });
     });
-  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions, router, startTransition]);
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions, view, router, startTransition]);
+
+  // Debounced URL write for the search param: state updates stay instant so
+  // typing stays responsive, but router.replace fires at most once per 250ms
+  // of typing pause instead of on every keystroke. The timer runs the latest
+  // `updateUrl` (via ref) so a debounced fire never replays stale filter
+  // state changed in the interim. Timer cleared on unmount.
+  const searchUrlTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const updateUrlRef = useRef(updateUrl);
+  useEffect(() => {
+    updateUrlRef.current = updateUrl;
+  });
+  useEffect(() => {
+    return () => clearTimeout(searchUrlTimerRef.current);
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    updateUrl({ search: value });
+    clearTimeout(searchUrlTimerRef.current);
+    searchUrlTimerRef.current = setTimeout(() => {
+      searchUrlTimerRef.current = undefined;
+      updateUrlRef.current({ search: value });
+    }, 250);
   };
 
   const handleProviderChange = (value: string) => {
@@ -251,14 +346,8 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     updateUrl({ freeOnly: value });
   };
 
-  const handleSortByChange = (value:
-    | "default"
-    | "newest"
-    | "oldest"
-    | "price-asc"
-    | "price-desc"
-    | "bench-asc"
-    | "bench-desc") => {
+  const handleSortByChange = (value: SortBy) => {
+    userPickedSortRef.current = true;
     setSortBy(value);
     updateUrl({ sortBy: value });
   };
@@ -300,21 +389,29 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     updateUrl({ costAssumptions: normalized });
   };
 
+  const handleViewChange = (value: "grid" | "list") => {
+    setView(value);
+    updateUrl({ view: value });
+  };
+
   const handleReset = () => {
     setSearch("");
     setSelectedProvider("");
     setFreeOnly(false);
-    setSortBy("default");
+    setSortBy("newest");
     setPriceMin("");
     setPriceMax("");
     setBenchMin("");
     setBenchMaxCost("");
     setDateFrom("");
     setDateTo("");
-    setCostAssumptions(DEFAULT_COST_ASSUMPTIONS);
-    writeStoredCostAssumptions(DEFAULT_COST_ASSUMPTIONS);
+    // Filters-only reset: cost assumptions are reset inside the More-filters
+    // panel, and `view` is not a filter — its URL param is preserved.
+    const params = new URLSearchParams();
+    if (view !== "grid") params.set("view", view);
+    const queryString = params.toString();
     startTransition(() => {
-      router.replace("/", { scroll: false });
+      router.replace(queryString ? `?${queryString}` : "/", { scroll: false });
     });
   };
 
@@ -344,16 +441,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const urlProvider = searchParams.get("provider") || "";
     const urlFreeOnly = searchParams.get("free") === "true";
     const rawSort = searchParams.get("sort");
-    const urlSortBy =
-      rawSort === "newest" ||
-      rawSort === "oldest" ||
-      rawSort === "default" ||
-      rawSort === "price-asc" ||
-      rawSort === "price-desc" ||
-      rawSort === "bench-asc" ||
-      rawSort === "bench-desc"
-        ? rawSort
-        : "default";
+    const urlSortBy = (SORT_VALUES as readonly string[]).includes(rawSort ?? "")
+      ? (rawSort as SortBy)
+      : "newest";
     const urlPriceMin = searchParams.get("priceMin") || "";
     const urlPriceMax = searchParams.get("priceMax") || "";
     const urlBenchMin = searchParams.get("benchMin") || "";
@@ -382,6 +472,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     setDateFrom(urlDateFrom);
     setDateTo(urlDateTo);
     setCostAssumptions(urlCostAssumptions);
+    setView(searchParams.get("view") === "list" ? "list" : "grid");
     // Only re-sync when the URL actually changes (e.g. browser back/forward).
     // Omitting the state variables from deps prevents a feedback loop where
     // setState → re-render → effect re-runs → setState again causes blinking.
@@ -412,7 +503,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
 
   const providers = useMemo(() => getUniqueProviders(models), [models]);
 
-  const filteredModels = useMemo(() => {
+  const { filteredModels, hiddenUnpricedCount } = useMemo(() => {
     // Shared per-million-token avg price helper, reused by both range filter
     // and price sorting. Reads from the shared utility so the same formula
     // powers ModelCard display, the range filter, and price sorting.
@@ -427,6 +518,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       Number.isFinite(parsedPriceMin) && parsedPriceMin >= 0 ? parsedPriceMin : null;
     const maxPriceNum =
       Number.isFinite(parsedPriceMax) && parsedPriceMax >= 0 ? parsedPriceMax : null;
+    const priceBoundActive = minPriceNum != null || maxPriceNum != null;
 
     const parsedFromMs = dateFrom === "" ? NaN : Date.parse(dateFrom);
     const parsedToMs = dateTo === "" ? NaN : Date.parse(dateTo);
@@ -454,7 +546,11 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
 
     const benchActive = benchMinNum != null || benchMaxCostNum != null;
 
-    const filtered = models.filter((model) => {
+    // `provider` may hold a CSV selection ("anthropic,openai") from the
+    // provider combobox — membership test against the split set.
+    const providerSet = selectedProvider ? splitProviderParam(selectedProvider) : null;
+
+    const matchesNonPricePredicates = (model: AIModel) => {
       const searchLower = search.toLowerCase();
       const matchesSearch =
         !search ||
@@ -463,19 +559,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         (model.description?.toLowerCase().includes(searchLower) ?? false);
 
       const matchesProvider =
-        !selectedProvider ||
-        getProviderFromId(model.id) === selectedProvider;
+        !providerSet || providerSet.includes(getProviderFromId(model.id));
 
       const matchesFree = !freeOnly || isFreeModel(model);
-
-      // Avg price range — compared in $/1M tokens to match the unit shown on
-      // ModelCard and in the filter inputs.
-      const avgPerMillion =
-        minPriceNum != null || maxPriceNum != null
-          ? getAvgPriceForModel(model)
-          : 0;
-      const matchesPriceMin = minPriceNum == null || avgPerMillion >= minPriceNum;
-      const matchesPriceMax = maxPriceNum == null || avgPerMillion <= maxPriceNum;
 
       // Date range — model.created is a Unix timestamp (seconds). Models with
       // `created === 0` are meta/router placeholders with no real date and are
@@ -502,39 +588,95 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         matchesSearch &&
         matchesProvider &&
         matchesFree &&
-        matchesPriceMin &&
-        matchesPriceMax &&
         matchesDate &&
         matchesBench
       );
+    };
+
+    const filtered = models.filter((model) => {
+      // Avg price range — compared in $/1M tokens to match the unit shown on
+      // ModelCard and in the filter inputs. Unpriced models (NaN average from
+      // -1 sentinels) fail both bounds and are filtered out.
+      const avgPerMillion = priceBoundActive ? getAvgPriceForModel(model) : 0;
+      const matchesPriceMin = minPriceNum == null || avgPerMillion >= minPriceNum;
+      const matchesPriceMax = maxPriceNum == null || avgPerMillion <= maxPriceNum;
+
+      return (
+        matchesNonPricePredicates(model) &&
+        matchesPriceMin &&
+        matchesPriceMax
+      );
     });
 
-    if (sortBy === "newest") {
-      return [...filtered].sort((a, b) => b.created - a.created);
+    // Models whose ONLY failing bound is the price filter: unpriced (no
+    // published prices) while a price bound is active and every other
+    // predicate passes. Reported to SearchFilter/EmptyState; never counts
+    // toward filteredCount.
+    const hiddenUnpricedCount = priceBoundActive
+      ? models.filter(
+          (model) => !hasPublishedPrice(model) && matchesNonPricePredicates(model),
+        ).length
+      : 0;
+
+    // Relevance ordering: while a query is active and the user hasn't picked a
+    // sort this session, relevanceScore wins. Ties break by newest `created`
+    // first; placeholders (created === 0) always sink to the end.
+    if (search && !userPickedSortRef.current) {
+      const query = search;
+      return {
+        filteredModels: [...filtered].sort((a, b) => {
+          const scoreDiff = relevanceScore(b, query) - relevanceScore(a, query);
+          if (scoreDiff !== 0) return scoreDiff;
+          if ((a.created === 0) !== (b.created === 0)) return a.created === 0 ? 1 : -1;
+          return b.created - a.created;
+        }),
+        hiddenUnpricedCount,
+      };
     }
-    if (sortBy === "oldest") {
-      return [...filtered].sort((a, b) => a.created - b.created);
+
+    // "newest" is the recency-first overview order; placeholders (created === 0)
+    // sink to the end. "default" preserves the gateway's own API order.
+    if (sortBy === "newest") {
+      return {
+        filteredModels: [...filtered].sort((a, b) => {
+          if ((a.created === 0) !== (b.created === 0)) return a.created === 0 ? 1 : -1;
+          return b.created - a.created;
+        }),
+        hiddenUnpricedCount,
+      };
     }
     if (sortBy === "price-asc" || sortBy === "price-desc") {
-      return [...filtered].sort((a, b) =>
-        sortBy === "price-asc"
-          ? getAvgPriceForModel(a) - getAvgPriceForModel(b)
-          : getAvgPriceForModel(b) - getAvgPriceForModel(a)
-      );
+      // Models with unpublished prices (-1 sentinels → NaN average, shown as
+      // "Varies") sink to the end regardless of direction.
+      return {
+        filteredModels: [...filtered].sort((a, b) => {
+          const aPrice = getAvgPriceForModel(a);
+          const bPrice = getAvgPriceForModel(b);
+          const aOk = Number.isFinite(aPrice);
+          const bOk = Number.isFinite(bPrice);
+          if (!aOk && !bOk) return 0;
+          if (aOk !== bOk) return aOk ? -1 : 1;
+          return sortBy === "price-asc" ? aPrice - bPrice : bPrice - aPrice;
+        }),
+        hiddenUnpricedCount,
+      };
     }
     if (sortBy === "bench-asc" || sortBy === "bench-desc") {
-      return [...filtered].sort((a, b) => {
-        // Models with no benchmark data sink to the end regardless of direction.
-        const aHas = a.terminalBench != null;
-        const bHas = b.terminalBench != null;
-        if (!aHas && !bHas) return 0;
-        if (aHas !== bHas) return aHas ? -1 : 1;
-        const aScore = a.terminalBench!.overallScore;
-        const bScore = b.terminalBench!.overallScore;
-        return sortBy === "bench-asc" ? aScore - bScore : bScore - aScore;
-      });
+      return {
+        filteredModels: [...filtered].sort((a, b) => {
+          // Models with no benchmark data sink to the end regardless of direction.
+          const aHas = a.terminalBench != null;
+          const bHas = b.terminalBench != null;
+          if (!aHas && !bHas) return 0;
+          if (aHas !== bHas) return aHas ? -1 : 1;
+          const aScore = a.terminalBench!.overallScore;
+          const bScore = b.terminalBench!.overallScore;
+          return sortBy === "bench-asc" ? aScore - bScore : bScore - aScore;
+        }),
+        hiddenUnpricedCount,
+      };
     }
-    return filtered;
+    return { filteredModels: filtered, hiddenUnpricedCount };
   }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions]);
 
   const costAssumptionsActive = !areCostAssumptionsDefault(costAssumptions);
@@ -543,7 +685,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     !!search ||
     !!selectedProvider ||
     freeOnly ||
-    sortBy !== "default" ||
+    sortBy !== "newest" ||
     !!priceMin ||
     !!priceMax ||
     !!benchMin ||
@@ -551,6 +693,40 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     !!dateFrom ||
     !!dateTo ||
     costAssumptionsActive;
+
+  const activeFilterChips = useMemo(() => {
+    const chips: string[] = [];
+    if (search) chips.push(`Search: "${search}"`);
+    if (selectedProvider) {
+      const providerNames = splitProviderParam(selectedProvider)
+        .map((provider) => formatProviderName(provider))
+        .join(", ");
+      chips.push(`Provider: ${providerNames}`);
+    }
+    if (freeOnly) chips.push("Free only");
+    if (sortBy !== "newest") {
+      const labels: Record<string, string> = {
+        newest: "Newest first",
+        default: "Gateway order",
+        oldest: "Oldest first",
+        "price-asc": "Price: low to high",
+        "price-desc": "Price: high to low",
+        "bench-asc": "Benchmark: low to high",
+        "bench-desc": "Benchmark: high to low",
+      };
+      chips.push(`Sort: ${labels[sortBy] ?? sortBy}`);
+    }
+    if (priceMin) chips.push(`Avg ≥ $${priceMin}`);
+    if (benchMin) chips.push(`TerminalBench ≥ ${formatPercent(Number(benchMin), 0)}`);
+    if (benchMaxCost) chips.push(`Bench cost ≤ $${benchMaxCost}`);
+    if (dateFrom) chips.push(`From ${dateFrom}`);
+    if (dateTo) chips.push(`To ${dateTo}`);
+    if (costAssumptionsActive) chips.push(formatCostAssumptionSummary(costAssumptions));
+    if (hiddenUnpricedCount > 0) {
+      chips.push(`${hiddenUnpricedCount} ${UNPRICED_CHIP_SUFFIX}`);
+    }
+    return chips;
+  }, [search, selectedProvider, freeOnly, sortBy, priceMin, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions, costAssumptionsActive, hiddenUnpricedCount]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -575,14 +751,14 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               {/* Logo mark */}
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-lg shadow-violet-500/20">
+              <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-violet-400">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
                   height="16"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="white"
+                  stroke="currentColor"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -601,7 +777,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
                 </p>
               </div>
             </div>
-            <ViewToggle view={view} onViewChange={setView} />
+            <ViewToggle view={view} onViewChange={handleViewChange} />
           </div>
         </div>
       </header>
@@ -610,10 +786,10 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
         <div className="mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-2">
-            Browse AI Models
+            Latest AI Models
           </h2>
           <p className="text-zinc-500 text-sm sm:text-base">
-            Explore and discover AI models available through the Kilo Gateway.
+            Newest releases across every provider on the Kilo Gateway — compare price, context, and capability to pick the current best.
           </p>
         </div>
 
@@ -629,6 +805,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             onFreeOnlyChange={handleFreeOnlyChange}
             sortBy={sortBy}
             onSortByChange={handleSortByChange}
+            relevanceActive={!userPickedSortRef.current && !!search}
             priceMin={priceMin}
             priceMax={priceMax}
             onPriceMinChange={handlePriceMinChange}
@@ -645,11 +822,31 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             onReset={handleReset}
             totalCount={models.length}
             filteredCount={filteredModels.length}
+            hiddenUnpricedCount={hiddenUnpricedCount}
             costAssumptions={costAssumptions}
             costAssumptionsActive={costAssumptionsActive}
             onCostAssumptionsChange={handleCostAssumptionsChange}
           />
         )}
+      {/* Shared-URL cost assumptions that were out of range got clamped — tell the recipient. */}
+      {assumptionsAdjustedNotice && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 mt-3 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs text-amber-300"
+        >
+          <span>
+            Shared cost assumptions were outside 0–100% and were adjusted.
+          </span>
+          <button
+            type="button"
+            onClick={() => setAssumptionsAdjustedNotice(false)}
+            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors"
+            aria-label="Dismiss notice"
+          >
+            ×
+          </button>
+        </div>
+      )}
       </div>
 
       {/* Content */}
@@ -659,7 +856,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
         ) : error ? (
           <ErrorState message={error} onRetry={fetchModels} />
         ) : filteredModels.length === 0 ? (
-          <EmptyState hasFilters={hasFilters} />
+          <EmptyState hasFilters={hasFilters} filterChips={activeFilterChips} onReset={handleReset} />
         ) : (
           <>
             <div
