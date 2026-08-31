@@ -1,0 +1,364 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-31T20:22:47.612Z",
+  "title": "Design System: Kilo Gateway — AI Model Explorer",
+  "extensions": {
+    "colorMeta": {
+      "void": {
+        "role": "neutral",
+        "displayName": "Void",
+        "canonical": "#09090b"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "#18181b"
+      },
+      "surface-raised": {
+        "role": "neutral",
+        "displayName": "Raised",
+        "canonical": "#27272a"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "canonical": "#3f3f46"
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Line Strong",
+        "canonical": "#52525b"
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Text Primary",
+        "canonical": "#f4f4f5"
+      },
+      "text-value": {
+        "role": "neutral",
+        "displayName": "Text Value",
+        "canonical": "#d4d4d8"
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Text Secondary",
+        "canonical": "#a1a1aa"
+      },
+      "signal-violet": {
+        "role": "primary",
+        "displayName": "Signal Violet",
+        "canonical": "#8b5cf6",
+        "tonalRamp": [
+          "#2e1065",
+          "#4c1d95",
+          "#5b21b6",
+          "#6d28d9",
+          "#7c3aed",
+          "#8b5cf6",
+          "#a78bfa",
+          "#c4b5fd",
+          "#ddd6fe",
+          "#ede9fe"
+        ]
+      },
+      "signal-violet-deep": {
+        "role": "primary",
+        "displayName": "Signal Violet Deep",
+        "canonical": "#7c3aed"
+      },
+      "terminal-green": {
+        "role": "secondary",
+        "displayName": "Terminal Green",
+        "canonical": "#39ff14",
+        "tonalRamp": [
+          "#052e16",
+          "#14532d",
+          "#166534",
+          "#15803d",
+          "#16a34a",
+          "#22c55e",
+          "#4ade80",
+          "#86efac",
+          "#bbf7d0",
+          "#dcfce7"
+        ]
+      },
+      "bench-blue": {
+        "role": "tertiary",
+        "displayName": "Bench Blue",
+        "canonical": "#38bdf8",
+        "tonalRamp": [
+          "#082f49",
+          "#0c4a6e",
+          "#075985",
+          "#0369a1",
+          "#0284c7",
+          "#38bdf8",
+          "#7dd3fc",
+          "#bae6fd",
+          "#e0f2fe",
+          "#f0f9ff"
+        ]
+      },
+      "warning-amber": {
+        "role": "tertiary",
+        "displayName": "Warning Amber",
+        "canonical": "#fbbf24",
+        "tonalRamp": [
+          "#451a03",
+          "#713f12",
+          "#854d0e",
+          "#a16207",
+          "#ca8a04",
+          "#fbbf24",
+          "#fcd34d",
+          "#fde68a",
+          "#fef3c7",
+          "#fffbeb"
+        ]
+      },
+      "success-emerald": {
+        "role": "tertiary",
+        "displayName": "Success Emerald",
+        "canonical": "#34d399",
+        "tonalRamp": [
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#10b981",
+          "#34d399",
+          "#6ee7b7",
+          "#a7f3d0",
+          "#d1fae5",
+          "#ecfdf5"
+        ]
+      },
+      "danger-red": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "#f87171",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fca5a5",
+          "#fecaca",
+          "#fee2e2",
+          "#fef2f2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Single hero statement; one per page.",
+        "fontFamily": "Geist"
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Brand lockup in the sticky header.",
+        "fontFamily": "Geist"
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Model names, section labels.",
+        "fontFamily": "Geist"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Descriptions and helper copy; hero capped at max-w-2xl.",
+        "fontFamily": "Geist"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase micro-labels, badges, stat-pill labels; 11px functional floor.",
+        "fontFamily": "Geist"
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Model IDs only — the machine-identity voice.",
+        "fontFamily": "Geist Mono"
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-lift",
+        "value": "0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -4px rgba(0,0,0,0.2)",
+        "purpose": "Hover state of model cards — the only resting-surface shadow."
+      },
+      {
+        "name": "float",
+        "value": "0 10px 15px -3px rgba(0,0,0,0.3)",
+        "purpose": "Tooltips, popovers, the mobile filter sheet."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Color/background/border/shadow transitions on controls."
+      },
+      {
+        "name": "lift",
+        "value": "200ms ease",
+        "purpose": "Card hover lift and border-tone shift."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Page-level commits only: Done, Try again, Clear all filters.",
+      "html": "<button class=\"ds-btn-primary\">Done</button>",
+      "css": ".ds-btn-primary { background: #7c3aed; color: #ffffff; padding: 10px 16px; font-size: 14px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; transition: background 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: #8b5cf6; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #a78bfa; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default control: Copy ID, Clear, provider rows; success state flips to emerald tint.",
+      "html": "<button class=\"ds-btn-secondary\">Copy ID</button><button class=\"ds-btn-secondary ds-is-copied\">Copied!</button>",
+      "css": ".ds-btn-secondary { background: #27272a; color: #d4d4d8; padding: 6px 12px; font-size: 12px; font-weight: 500; border: 1px solid #3f3f46; border-radius: 8px; cursor: pointer; transition: all 200ms ease; } .ds-btn-secondary:hover { background: #3f3f46; color: #f4f4f5; border-color: #52525b; } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px #a78bfa; } .ds-btn-secondary.ds-is-copied { background: rgba(16,185,129,0.1); color: #34d399; border-color: rgba(52,211,153,0.3); }"
+    },
+    {
+      "name": "Search / Filter Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text entry, selects, and date ranges share one recipe: surface fill, line border, violet focus.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search models…\" />",
+      "css": ".ds-input { background: #18181b; color: #e4e4e7; padding: 10px 12px; font-size: 14px; border: 1px solid #3f3f46; border-radius: 12px; width: 100%; transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: #a1a1aa; } .ds-input:focus { outline: none; border-color: #8b5cf6; box-shadow: 0 0 0 1px rgba(139,92,246,0.3); } .ds-input:focus-visible { box-shadow: 0 0 0 1px rgba(139,92,246,0.3), 0 0 0 2px #a78bfa; }"
+    },
+    {
+      "name": "Model Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The system's protagonist: flat at rest, lifts on hover; name → badges → description → 2×2 stat pills → date → mono ID tray.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Model Name</h3><div class=\"ds-card-badges\"><span class=\"ds-pill ds-pill-provider\">openai</span><span class=\"ds-pill ds-pill-new\">NEW</span></div><p class=\"ds-card-desc\">Model description text…</p><div class=\"ds-stats\"><div class=\"ds-stat\"><span class=\"ds-stat-label\">CONTEXT</span><span class=\"ds-stat-value\">200K</span></div><div class=\"ds-stat\"><span class=\"ds-stat-label\">AVG $/1M</span><span class=\"ds-stat-value\">$0.45</span></div><div class=\"ds-stat\"><span class=\"ds-stat-label\">IN</span><span class=\"ds-stat-value\">$0.30</span></div><div class=\"ds-stat\"><span class=\"ds-stat-label\">OUT</span><span class=\"ds-stat-value\">$0.60</span></div></div><div class=\"ds-id-tray\"><code class=\"ds-id\">openai/gpt-5</code><button class=\"ds-copy\">Copy</button></div></div>",
+      "css": ".ds-card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; transition: all 200ms ease; } .ds-card:hover { border-color: #52525b; background: rgba(39,39,42,0.5); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2), 0 4px 6px -4px rgba(0,0,0,0.2); } .ds-card-title { font-size: 14px; font-weight: 600; color: #f4f4f5; margin: 0 0 6px; line-height: 1.4; } .ds-card-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; } .ds-card-desc { font-size: 12px; color: #a1a1aa; line-height: 1.625; margin: 0 0 16px; } .ds-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; } .ds-stat { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 12px; background: rgba(39,39,42,0.6); border: 1px solid rgba(63,63,70,0.5); border-radius: 8px; } .ds-stat-label { font-size: 12px; color: #a1a1aa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em; line-height: 1; margin-bottom: 4px; } .ds-stat-value { font-size: 14px; font-weight: 600; color: #d4d4d8; line-height: 1; } .ds-id-tray { display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(39,39,42,0.4); border: 1px solid rgba(63,63,70,0.5); border-radius: 8px; } .ds-id { flex: 1; font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #d4d4d8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-copy { background: none; border: none; color: #a1a1aa; font-size: 12px; font-weight: 500; padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: all 150ms; } .ds-copy:hover { color: #e4e4e7; background: #3f3f46; }"
+    },
+    {
+      "name": "Identity Pills",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Full-radius status pills; provider pills carry a per-provider hue, status pills their semantic color.",
+      "html": "<span class=\"ds-pill ds-pill-provider\">openai</span> <span class=\"ds-pill ds-pill-free\">FREE</span> <span class=\"ds-pill ds-pill-new\">NEW</span> <span class=\"ds-pill ds-pill-tb\">▸ 74.2%</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; font-size: 12px; border: 1px solid; white-space: nowrap; } .ds-pill-provider { background: rgba(16,185,129,0.1); color: #34d399; border-color: rgba(16,185,129,0.2); font-weight: 500; } .ds-pill-free { background: rgba(57,255,20,0.1); color: #39ff14; border-color: rgba(57,255,20,0.3); font-weight: 700; } .ds-pill-new { background: rgba(139,92,246,0.15); color: #c4b5fd; border-color: rgba(167,139,250,0.3); font-weight: 700; } .ds-pill-tb { background: rgba(56,189,248,0.1); color: #38bdf8; border-color: rgba(56,189,248,0.2); border-radius: 6px; font-weight: 500; }"
+    },
+    {
+      "name": "Stat Pill",
+      "kind": "custom",
+      "refersTo": "stat-pill",
+      "description": "Inset numeric tile: uppercase 12px label over 14px semibold value; optional title-based assumption disclosure.",
+      "html": "<div class=\"ds-stat\" title=\"Avg $0.45 per 1M tokens — assumes 10% output, 77.8% cache hit\"><span class=\"ds-stat-label\">AVG $/1M</span><span class=\"ds-stat-value\">$0.45</span></div>",
+      "css": ".ds-stat { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; padding: 8px 12px; background: rgba(39,39,42,0.6); border: 1px solid rgba(63,63,70,0.5); border-radius: 8px; } .ds-stat-label { font-size: 12px; color: #a1a1aa; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em; line-height: 1; margin-bottom: 4px; } .ds-stat-value { font-size: 14px; font-weight: 600; color: #d4d4d8; line-height: 1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }"
+    },
+    {
+      "name": "Amber Notice",
+      "kind": "custom",
+      "refersTo": "components.chip",
+      "description": "Advisory channel for URL/state warnings: amber tint, dismissible, role=status.",
+      "html": "<div class=\"ds-notice\" role=\"status\"><span>Ignored invalid filter(s) from link: priceMin=-5</span><button class=\"ds-notice-x\" aria-label=\"Dismiss notice\">×</button></div>",
+      "css": ".ds-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(251,191,36,0.3); background: rgba(251,191,36,0.1); font-size: 12px; color: #fcd34d; } .ds-notice-x { background: none; border: none; color: #fbbf24; font-weight: 600; cursor: pointer; min-height: 44px; min-width: 44px; margin: -8px; } .ds-notice-x:hover { color: #fde68a; }"
+    },
+    {
+      "name": "Header / Navigation",
+      "kind": "nav",
+      "refersTo": "components.button-secondary",
+      "description": "Sticky blurred header: logo tile + brand lockup left, grid/list segmented toggle right.",
+      "html": "<header class=\"ds-header\"><div class=\"ds-header-brand\"><div class=\"ds-logo\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 2L2 7l10 5 10-5-10-5z\"/><path d=\"M2 17l10 5 10-5\"/><path d=\"M2 12l10 5 10-5\"/></svg></div><div><div class=\"ds-header-title\">Kilo Gateway</div><div class=\"ds-header-sub\">AI Model Explorer</div></div></div><div class=\"ds-segmented\"><button class=\"ds-seg-btn ds-is-active\" aria-pressed=\"true\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect width=\"7\" height=\"7\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"14\" y=\"14\" rx=\"1\"/><rect width=\"7\" height=\"7\" x=\"3\" y=\"14\" rx=\"1\"/></svg></button><button class=\"ds-seg-btn\" aria-pressed=\"false\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"8\" x2=\"21\" y1=\"6\" y2=\"6\"/><line x1=\"8\" x2=\"21\" y1=\"12\" y2=\"12\"/><line x1=\"8\" x2=\"21\" y1=\"18\" y2=\"18\"/><line x1=\"3\" x2=\"5\" y1=\"6\" y2=\"6\"/><line x1=\"3\" x2=\"5\" y1=\"12\" y2=\"12\"/><line x1=\"3\" x2=\"5\" y1=\"18\" y2=\"18\"/></svg></button></div></header>",
+      "css": ".ds-header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; background: rgba(9,9,11,0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(39,39,42,0.6); font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; } .ds-header-brand { display: flex; align-items: center; gap: 12px; } .ds-logo { width: 32px; height: 32px; border-radius: 8px; background: #27272a; border: 1px solid #3f3f46; display: flex; align-items: center; justify-content: center; color: #8b5cf6; } .ds-header-title { font-size: 16px; font-weight: 700; color: #f4f4f5; line-height: 1; } .ds-header-sub { font-size: 12px; color: #a1a1aa; line-height: 1; margin-top: 2px; } .ds-segmented { display: flex; gap: 4px; } .ds-seg-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: transparent; color: #71717a; cursor: pointer; transition: all 200ms; } .ds-seg-btn:hover { background: #27272a; } .ds-seg-btn.ds-is-active { background: #3f3f46; color: #8b5cf6; box-shadow: 0 1px 2px rgba(0,0,0,0.2); } .ds-seg-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px #a78bfa; }"
+    },
+    {
+      "name": "Free-only Toggle",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Radio-dot toggle; the only place Terminal Green marks an interactive control.",
+      "html": "<button class=\"ds-free-toggle\" aria-pressed=\"false\"><span class=\"ds-free-dot\"></span>Free only</button>",
+      "css": ".ds-free-toggle { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; font-size: 14px; font-weight: 500; background: #18181b; color: #a1a1aa; border: 1px solid #3f3f46; cursor: pointer; transition: all 200ms; } .ds-free-toggle:hover { border-color: #52525b; color: #e4e4e7; } .ds-free-toggle[aria-pressed=\"true\"] { background: rgba(57,255,20,0.1); color: #39ff14; border-color: rgba(57,255,20,0.3); } .ds-free-dot { width: 14px; height: 14px; border-radius: 9999px; border: 2px solid #52525b; display: flex; align-items: center; justify-content: center; } .ds-free-toggle[aria-pressed=\"true\"] .ds-free-dot { border-color: #39ff14; background: rgba(57,255,20,0.2); } .ds-free-toggle:focus-visible { outline: none; box-shadow: 0 0 0 2px #a78bfa; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calibration Bench",
+    "overview": "This is an instrument panel for model data. The interface is a dark, near-monochrome zinc field that behaves like calibrated lab equipment: dense, labeled, and quiet, so that the numbers — prices, context lengths, benchmark scores — are the brightest, highest-contrast things on screen. The UI never competes with the data. Expression lives in precision (exact radii, a strict focus ring, aligned type) rather than in decoration; there are no gradients, no glow, no decorative imagery anywhere in the system.\n\nColor is a closed semantic vocabulary, not a mood. Violet is the single interactive voice — focus, active state, primary action. Terminal green means exactly one thing: free. Amber means caution, emerald means success, red means invalid or destructive. Everything else is zinc. The only sanctioned chromatic expansion is provider wayfinding: each gateway provider may carry one hue on its badge, applied at the same 10%-tint / 20%-border / 400-level-text recipe, so the rainbow stays functional rather than decorative.",
+    "keyCharacteristics": [
+      "Dark-field zinc monochrome (950 field, 900 surfaces, 800 controls) with 1px tonal borders carrying all structure.",
+      "One interactive accent (Signal Violet) used sparingly — focus rings, active toggles, primary buttons, NEW badges.",
+      "Flat surfaces at rest; depth is earned on hover or floating layers only.",
+      "Pill-shaped identity badges (full radius) against rounded-rectangle controls (8–12px) — the silhouette contrast between \"what a model is\" and \"what you do\".",
+      "Numbers in semibold; machine identifiers (model IDs) always in mono.",
+      "Motion is minimal and state-driven: 150ms color/property transitions, 200ms card lift, fully disabled under prefers-reduced-motion."
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Violet speaks only for interactivity and never exceeds ~10% of any screen; if violet appears on something you cannot click or toggle, the system is lying.",
+        "section": "colors"
+      },
+      {
+        "name": "The Meaning-Only Color Rule",
+        "body": "Every non-zinc color maps to exactly one meaning (violet = act, green = free, blue = benchmark, amber = caution, emerald = success, red = invalid). A color that carries no meaning is removed, not repurposed.",
+        "section": "colors"
+      },
+      {
+        "name": "The Provider Wayfinding Rule",
+        "body": "Provider badges may carry one hue each, always as 10% tint fill + 20% border + 400-level text (or zinc when unmapped); provider hue is identity, never state or emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Voice Rule",
+        "body": "Sans for everything human, mono for everything the machine identifies — never mix roles.",
+        "section": "typography"
+      },
+      {
+        "name": "The 11px Floor Rule",
+        "body": "No functional text renders below 11px; if content must shrink further, it must be cut, not shrunk.",
+        "section": "typography"
+      },
+      {
+        "name": "The Earned Shadow Rule",
+        "body": "Surfaces are flat at rest; a shadow appears only as a response (hover) or for genuinely floating layers. Never rest a static shadow on a page element.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do give every interactive element the violet focus-visible ring (2px, #a78bfa) — it is the system's signature of interactivity.",
+      "Do keep mobile touch targets at 44px minimum (max-sm:min-h-[44px]) on every interactive element, even when desktop is compact.",
+      "Do render machine identifiers (model IDs) in mono, with a copy affordance and an aria-live \"Copied!\" confirmation.",
+      "Do keep secondary text at zinc-400 (#a1a1aa) or lighter, and functional micro-text at ≥11px.",
+      "Do reserve amber for advisory notices with a dismiss affordance, and confirm destructive-capable controls with a red hover before any red default.",
+      "Do sort by recency by default and make freshness visible (relative age + absolute date on demand)."
+    ],
+    "donts": [
+      "Don't use gradients, glows, or decorative color — if a color has no meaning, it doesn't ship.",
+      "Don't reuse a semantic color for a second meaning (Terminal Green means free; it is never \"go\" or \"success\").",
+      "Don't rest a shadow on a static element; depth is hover-earned or floating-layer-only.",
+      "Don't set text darker than zinc-400 on the Void field, and don't rely on title-attribute-only disclosures for touch or keyboard users — use a focusable, tappable disclosure.",
+      "Don't add a new accent hue for a new concept; extend the semantic map (violet/green/blue/amber/emerald/red) or route it through provider wayfinding.",
+      "Don't animate anything beyond the 150/200ms state transitions; respect prefers-reduced-motion globally."
+    ]
+  }
+}
