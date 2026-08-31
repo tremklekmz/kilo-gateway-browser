@@ -302,6 +302,31 @@ export function formatCreatedDate(timestamp: number): string | null {
   });
 }
 
+/**
+ * Terse relative age for a Unix timestamp (seconds), e.g. "3d", "2mo", "1y".
+ * Primary scan signal for recency; the absolute date (formatCreatedDate)
+ * remains available via title/aria-label. Pure: pass `nowSeconds` (Unix
+ * seconds) from the caller for determinism. Returns null for placeholder
+ * timestamps (created === 0 / negative) so callers render nothing.
+ *
+ * Buckets: "<1d" under 24h; whole days under 60d; whole months under 2y;
+ * whole years from there. Future timestamps (clock skew) read as "<1d".
+ */
+export function formatRelativeAge(
+  createdSeconds: number,
+  nowSeconds: number = Math.floor(Date.now() / 1000),
+): string | null {
+  if (createdSeconds <= 0) return null;
+  const ageSeconds = nowSeconds - createdSeconds;
+  if (ageSeconds < 86400) return "<1d";
+  const days = Math.floor(ageSeconds / 86400);
+  if (days < 60) return `${days}d`;
+  const months = Math.floor(ageSeconds / 2629746); // mean Gregorian month
+  if (months < 24) return `${months}mo`;
+  const years = Math.floor(ageSeconds / 31556952); // mean Gregorian year
+  return `${years}y`;
+}
+
 /** How long after release a model is flagged as NEW on cards (14 days). */
 export const NEW_MODEL_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 

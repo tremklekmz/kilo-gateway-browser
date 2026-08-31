@@ -42,6 +42,52 @@ const SORT_VALUES: readonly SortBy[] = [
   "bench-desc",
 ];
 
+/** URL params that hold range/date filter bounds. */
+const FILTER_PARAM_KEYS = [
+  "priceMin",
+  "priceMax",
+  "benchMin",
+  "benchMaxCost",
+  "dateFrom",
+  "dateTo",
+] as const;
+
+type FilterParamKey = (typeof FILTER_PARAM_KEYS)[number];
+
+/**
+ * A filter param is invalid when it is present but unusable for its field: a
+ * non-number or negative price / benchmark cost, a benchmark score outside
+ * 0-1, or an unparseable date. Invalid values are never applied as filters;
+ * the only way they reach the URL is an incoming shared link.
+ */
+function isInvalidFilterParam(key: FilterParamKey, raw: string): boolean {
+  if (raw.trim() === "") return false;
+  switch (key) {
+    case "priceMin":
+    case "priceMax":
+    case "benchMaxCost": {
+      const value = Number(raw);
+      return !Number.isFinite(value) || value < 0;
+    }
+    case "benchMin": {
+      const value = Number(raw);
+      return !Number.isFinite(value) || value < 0 || value > 1;
+    }
+    case "dateFrom":
+    case "dateTo":
+      return Number.isNaN(Date.parse(raw));
+  }
+}
+
+/** Raw URL value for a filter param, or "" when present but invalid. */
+function sanitizeFilterParam(
+  key: FilterParamKey,
+  params: { get(key: string): string | null },
+): string {
+  const raw = params.get(key) ?? "";
+  return isInvalidFilterParam(key, raw) ? "" : raw;
+}
+
 /** Suffix identifying the amber "unpriced hidden" chip in the EmptyState chip row. */
 const UNPRICED_CHIP_SUFFIX = "unpriced hidden by price filter";
 
@@ -76,7 +122,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
       <p className="text-sm text-zinc-400 mb-1 max-w-sm">
         Couldn&apos;t reach the gateway API. Check your connection and try again.
       </p>
-      <p className="text-xs text-zinc-600 max-w-sm mb-6">{message}</p>
+      <p className="text-xs text-zinc-400 max-w-sm mb-6">{message}</p>
       <button
         onClick={onRetry}
         className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors duration-200"
@@ -190,14 +236,14 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const raw = searchParams.get("sort");
     return (SORT_VALUES as readonly string[]).includes(raw ?? "") ? (raw as SortBy) : "newest";
   });
-  const [priceMin, setPriceMin] = useState(searchParams.get("priceMin") || "");
-  const [priceMax, setPriceMax] = useState(searchParams.get("priceMax") || "");
-  const [benchMin, setBenchMin] = useState(searchParams.get("benchMin") || "");
-  const [benchMaxCost, setBenchMaxCost] = useState(
-    searchParams.get("benchMaxCost") || ""
+  const [priceMin, setPriceMin] = useState(() => sanitizeFilterParam("priceMin", searchParams));
+  const [priceMax, setPriceMax] = useState(() => sanitizeFilterParam("priceMax", searchParams));
+  const [benchMin, setBenchMin] = useState(() => sanitizeFilterParam("benchMin", searchParams));
+  const [benchMaxCost, setBenchMaxCost] = useState(() =>
+    sanitizeFilterParam("benchMaxCost", searchParams)
   );
-  const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
-  const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
+  const [dateFrom, setDateFrom] = useState(() => sanitizeFilterParam("dateFrom", searchParams));
+  const [dateTo, setDateTo] = useState(() => sanitizeFilterParam("dateTo", searchParams));
   const [costAssumptions, setCostAssumptions] = useState<CostAssumptions>(() =>
     normalizeCostAssumptions({
       outputTokenShare: parseCostAssumptionParam(
@@ -249,11 +295,24 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     }
   }, [rawAssumptionsDiverged]);
 
-  // Session-only flag: once the user explicitly picks a sort, relevance ordering
-  // stands down until page reload. Never a URL param — a shared ?q=... URL
-  // reproduces relevance behavior naturally on load.
-  const userPickedSortRef = useRef(false);
+  // True when an explicit sort is in play this session: either the user picked
+  // one via the select or the loaded URL carried an explicit `sort` param.
+  // While a query is active and this flag is false, relevance ordering wins.
+  // State (not a ref): the flag is read during render, so flipping it in an
+  // effect could strand a stale paint — e.g. a shared ?q=...&sort=price-asc
+  // would render relevance order while the select still showed
+  // "Sorted by relevance" — and bail-out state updates would not re-render.
+  const [userPickedSort, setUserPickedSort] = useState(() => {
+    const raw = searchParams.get("sort");
+    return (SORT_VALUES as readonly string[]).includes(raw ?? "");
+  });
 
+  // Query string of the last URL this component wrote itself (updateUrl,
+  // reset, prune). Typing an invalid value mid-edit (e.g. "-" or "-5" in a
+  // price input) legitimately lands in the URL; that is not "from link", so
+  // the link contract below ignores query strings we authored. Field-level
+  // red warnings in SearchFilter own typing-time validation.
+  const lastSelfWrittenQueryRef = useRef<string | null>(null);
   const updateUrl = useCallback((next?: {
     search?: string;
     selectedProvider?: string;
@@ -307,6 +366,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     if (nextView !== "grid") params.set("view", nextView);
 
     const queryString = params.toString();
+    lastSelfWrittenQueryRef.current = queryString;
     const newUrl = queryString ? `?${queryString}` : "/";
     startTransition(() => {
       router.replace(newUrl, { scroll: false });
@@ -347,7 +407,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   };
 
   const handleSortByChange = (value: SortBy) => {
-    userPickedSortRef.current = true;
+    setUserPickedSort(true);
     setSortBy(value);
     updateUrl({ sortBy: value });
   };
@@ -410,6 +470,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const params = new URLSearchParams();
     if (view !== "grid") params.set("view", view);
     const queryString = params.toString();
+    lastSelfWrittenQueryRef.current = queryString;
     startTransition(() => {
       router.replace(queryString ? `?${queryString}` : "/", { scroll: false });
     });
@@ -437,6 +498,17 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   };
 
   useEffect(() => {
+    // Our own router.replace calls echo back through searchParams. Replaying
+    // the full state sync on that echo would clobber in-flight typing (e.g.
+    // a debounced q= echo overwriting a newer keystroke), and handlers have
+    // already applied the state they wrote — skip everything. lastSelfWritten-
+    // QueryRef is compared but never consumed here: the notice/prune effects
+    // below need the same comparison for their own URL changes. A later
+    // external navigation to the exact same query string is state-identical,
+    // so skipping the sync then is harmless.
+    const selfWritten =
+      searchParams.toString() === lastSelfWrittenQueryRef.current;
+    if (selfWritten) return;
     const urlSearch = searchParams.get("q") || "";
     const urlProvider = searchParams.get("provider") || "";
     const urlFreeOnly = searchParams.get("free") === "true";
@@ -444,12 +516,12 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     const urlSortBy = (SORT_VALUES as readonly string[]).includes(rawSort ?? "")
       ? (rawSort as SortBy)
       : "newest";
-    const urlPriceMin = searchParams.get("priceMin") || "";
-    const urlPriceMax = searchParams.get("priceMax") || "";
-    const urlBenchMin = searchParams.get("benchMin") || "";
-    const urlBenchMaxCost = searchParams.get("benchMaxCost") || "";
-    const urlDateFrom = searchParams.get("dateFrom") || "";
-    const urlDateTo = searchParams.get("dateTo") || "";
+    const urlPriceMin = sanitizeFilterParam("priceMin", searchParams);
+    const urlPriceMax = sanitizeFilterParam("priceMax", searchParams);
+    const urlBenchMin = sanitizeFilterParam("benchMin", searchParams);
+    const urlBenchMaxCost = sanitizeFilterParam("benchMaxCost", searchParams);
+    const urlDateFrom = sanitizeFilterParam("dateFrom", searchParams);
+    const urlDateTo = sanitizeFilterParam("dateTo", searchParams);
     const urlCostAssumptions = normalizeCostAssumptions({
       outputTokenShare: parseCostAssumptionParam(
         searchParams.get("avgOutputShare"),
@@ -463,8 +535,10 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
 
     setSearch(urlSearch);
     setSelectedProvider(urlProvider);
-    setFreeOnly(urlFreeOnly);
     setSortBy(urlSortBy);
+    setUserPickedSort(
+      (SORT_VALUES as readonly string[]).includes(searchParams.get("sort") ?? ""),
+    );
     setPriceMin(urlPriceMin);
     setPriceMax(urlPriceMax);
     setBenchMin(urlBenchMin);
@@ -477,6 +551,73 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     // Omitting the state variables from deps prevents a feedback loop where
     // setState → re-render → effect re-runs → setState again causes blinking.
   }, [searchParams]);
+
+  // Shared URLs can carry filter params that are invalid for their field
+  // (e.g. ?priceMin=-5, ?benchMin=7, ?priceMax=abc). One uniform contract:
+  // the value is never applied as a filter, the input shows the sanitized
+  // value instead, and ONE amber notice lists everything that was ignored.
+  // Derived from searchParams like rawAssumptionsDiverged so it tracks the
+  // URL; it clears on any unrelated URL change, and a re-shared cleaned URL
+  // does not re-trigger it.
+  const invalidFilterParams = useMemo(() => {
+    return FILTER_PARAM_KEYS.flatMap((key) => {
+      const raw = searchParams.get(key);
+      return raw != null && isInvalidFilterParam(key, raw) ? [`${key}=${raw}`] : [];
+    });
+  }, [searchParams]);
+
+  const [invalidParamsNotice, setInvalidParamsNotice] = useState<string[] | null>(
+    null,
+  );
+
+  // Set (snapshotted) when an incoming URL carries invalid params; cleared
+  // when the URL changes for any other reason. A snapshot — not the live
+  // memo — because the prune below removes the offending params from the
+  // URL, and the notice must keep naming them until dismissed. After our
+  // own prune the params are gone but the notice STAYS until dismissed (or
+  // the next navigation): pruning must not erase the very warning it was
+  // triggered by, or the recipient would never learn which shared values
+  // were ignored.
+  const prunedInvalidRef = useRef(false);
+
+  useEffect(() => {
+    const selfWritten =
+      searchParams.toString() === lastSelfWrittenQueryRef.current;
+    if (invalidFilterParams.length > 0) {
+      if (!selfWritten) setInvalidParamsNotice(invalidFilterParams);
+      return;
+    }
+    if (prunedInvalidRef.current) {
+      // The URL change is our own prune echo — keep the notice.
+      prunedInvalidRef.current = false;
+      return;
+    }
+    setInvalidParamsNotice(null);
+  }, [invalidFilterParams, searchParams]);
+
+  // Prune the offending params from the URL once so a re-shared link is
+  // clean. Runs inside a transition like updateUrl; every valid param is
+  // kept intact — only the keys that failed validation are dropped.
+  useEffect(() => {
+    if (invalidFilterParams.length === 0) return;
+    if (searchParams.toString() === lastSelfWrittenQueryRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    let pruned = false;
+    for (const entry of invalidFilterParams) {
+      const key = entry.slice(0, entry.indexOf("="));
+      if (params.has(key)) {
+        params.delete(key);
+        pruned = true;
+      }
+    }
+    if (!pruned) return;
+    prunedInvalidRef.current = true;
+    const queryString = params.toString();
+    lastSelfWrittenQueryRef.current = queryString;
+    startTransition(() => {
+      router.replace(queryString ? `?${queryString}` : "/", { scroll: false });
+    });
+  }, [invalidFilterParams, searchParams, startTransition, router]);
 
   useEffect(() => {
     if (loadedStoredCostAssumptionsRef.current) return;
@@ -621,7 +762,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     // Relevance ordering: while a query is active and the user hasn't picked a
     // sort this session, relevanceScore wins. Ties break by newest `created`
     // first; placeholders (created === 0) always sink to the end.
-    if (search && !userPickedSortRef.current) {
+    if (search && !userPickedSort) {
       const query = search;
       return {
         filteredModels: [...filtered].sort((a, b) => {
@@ -677,10 +818,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       };
     }
     return { filteredModels: filtered, hiddenUnpricedCount };
-  }, [models, search, selectedProvider, freeOnly, sortBy, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions]);
+  }, [models, search, selectedProvider, freeOnly, sortBy, userPickedSort, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions]);
 
   const costAssumptionsActive = !areCostAssumptionsDefault(costAssumptions);
-
   const hasFilters =
     !!search ||
     !!selectedProvider ||
@@ -772,7 +912,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
                 <h1 className="text-base font-bold text-zinc-100 leading-none">
                   Kilo Gateway
                 </h1>
-                <p className="text-xs text-zinc-500 leading-none mt-0.5">
+                <p className="text-xs text-zinc-400 leading-none mt-0.5">
                   AI Model Explorer
                 </p>
               </div>
@@ -788,7 +928,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
           <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-2">
             Latest AI Models
           </h2>
-          <p className="text-zinc-500 text-sm sm:text-base">
+          <p className="text-zinc-400 text-sm sm:text-base max-w-2xl">
             Newest releases across every provider on the Kilo Gateway — compare price, context, and capability to pick the current best.
           </p>
         </div>
@@ -805,7 +945,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             onFreeOnlyChange={handleFreeOnlyChange}
             sortBy={sortBy}
             onSortByChange={handleSortByChange}
-            relevanceActive={!userPickedSortRef.current && !!search}
+            relevanceActive={!userPickedSort && !!search}
             priceMin={priceMin}
             priceMax={priceMax}
             onPriceMinChange={handlePriceMinChange}
@@ -840,7 +980,26 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
           <button
             type="button"
             onClick={() => setAssumptionsAdjustedNotice(false)}
-            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors"
+            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors flex items-center justify-center max-sm:min-h-[44px] max-sm:min-w-[44px] -my-2 max-sm:-mx-1"
+            aria-label="Dismiss notice"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {/* Shared URL carried filter params that failed validation — list them once. */}
+      {invalidParamsNotice && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 mt-3 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs text-amber-300"
+        >
+          <span>
+            Ignored invalid filter(s) from link: {invalidParamsNotice.join(", ")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setInvalidParamsNotice(null)}
+            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors flex items-center justify-center max-sm:min-h-[44px] max-sm:min-w-[44px] -my-2 max-sm:-mx-1"
             aria-label="Dismiss notice"
           >
             ×
@@ -876,19 +1035,27 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
               ))}
             </div>
             {hasMore && <Pagination visibleCount={visibleModels.length} totalCount={filteredModels.length} onLoadMore={loadMore} />}
+            {!hasMore && visibleCount > PAGE_SIZE && (
+              <p
+                role="status"
+                className="text-center text-xs text-zinc-400 py-8"
+              >
+                All {filteredModels.length} models shown
+              </p>
+            )}
           </>
         )}
       </main>
 
       {/* Footer */}
       <footer className="border-t border-zinc-800/60 py-6">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-600">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-400">
           Data sourced from{" "}
           <a
             href="https://api.kilo.ai/api/gateway/models"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-violet-500 hover:text-violet-400 transition-colors"
+            className="text-violet-400 hover:text-violet-300 transition-colors"
           >
             api.kilo.ai
           </a>

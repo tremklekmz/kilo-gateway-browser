@@ -7,7 +7,7 @@ interface PaginationProps {
 export function Pagination({ visibleCount, totalCount, onLoadMore }: PaginationProps) {
   return (
     <div className="flex flex-col items-center gap-3 py-8">
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-zinc-400">
         Showing {visibleCount} of {totalCount} models
       </p>
       <button
