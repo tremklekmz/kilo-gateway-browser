@@ -28,6 +28,8 @@ import { SearchFilter } from "./SearchFilter";
 import { ViewToggle } from "./ViewToggle";
 import { SkeletonGrid } from "./SkeletonCard";
 import { Pagination } from "./Pagination";
+import { BenchValueStrip, pickBenchValueLeader } from "./BenchValue";
+import { FreshnessStamp } from "./FreshnessStamp";
 import { MODELS_API_URL } from "@/lib/constants";
 
 const PAGE_SIZE = 40;
@@ -95,11 +97,15 @@ interface ModelsBrowserProps {
   /** Models pre-fetched on the server. When provided, no client-side fetch is needed.
    *  When omitted (e.g. server fetch failed), the component will fetch on the client instead. */
   initialModels?: AIModel[];
+  /** Epoch ms when the server-fetched data was captured. A stable snapshot so the
+   *   freshness stamp renders identically on server and client (avoids Date.now()
+   *   hydration drift). Required alongside initialModels. */
+  initialUpdatedAt?: number;
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
+    <div className="flex flex-col items-center justify-center py-24 text-center" role="alert">
       <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -112,25 +118,39 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
           strokeLinecap="round"
           strokeLinejoin="round"
           className="text-red-400"
+          aria-hidden="true"
         >
           <circle cx="12" cy="12" r="10" />
           <line x1="12" x2="12" y1="8" y2="12" />
           <line x1="12" x2="12.01" y1="16" y2="16" />
         </svg>
       </div>
-      <h3 className="text-lg font-semibold text-zinc-200 mb-2">Failed to load models</h3>
+      <h3 className="text-lg font-semibold text-zinc-200 mb-2">Models are unavailable</h3>
       <p className="text-sm text-zinc-400 mb-1 max-w-sm">
-        Couldn&apos;t reach the gateway API. Check your connection and try again.
+        {message}
       </p>
-      <p className="text-xs text-zinc-400 max-w-sm mb-6">{message}</p>
+      <p className="text-xs text-zinc-400 max-w-sm mb-6">Check your connection, then try again.</p>
       <button
         onClick={onRetry}
-        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
         Try again
       </button>
     </div>
   );
+}
+
+function getFetchErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : "";
+  const status = raw.match(/HTTP (\d{3})/i)?.[1];
+  if (status === "401" || status === "403") return "The gateway declined this request.";
+  if (status === "404") return "The models endpoint could not be found.";
+  if (status === "429") return "The gateway is busy right now. Please wait a moment and retry.";
+  if (status && status.startsWith("5")) return "The gateway is having trouble right now.";
+  if (raw.toLowerCase().includes("network") || raw.toLowerCase().includes("fetch")) {
+    return "The gateway could not be reached.";
+  }
+  return "The model catalog could not be loaded.";
 }
 
 function EmptyState({
@@ -219,7 +239,7 @@ function writeStoredCostAssumptions(assumptions: CostAssumptions) {
   );
 }
 
-export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
+export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowserProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -229,6 +249,13 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [models, setModels] = useState<AIModel[]>(initialModels ?? []);
   const [loading, setLoading] = useState(!hasServerData);
   const [error, setError] = useState<string | null>(null);
+  // Epoch ms of the moment the current dataset was fetched. Server-provided
+  // data lands with the server snapshot (initialUpdatedAt); client fallback
+  // sets this after a successful fetch. Feeds the freshness stamp (recency is
+  // the product lens — "how new is the data" is the first trust question).
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<number | null>(() =>
+    hasServerData ? initialUpdatedAt ?? null : null,
+  );
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [selectedProvider, setSelectedProvider] = useState(searchParams.get("provider") || "");
   const [freeOnly, setFreeOnly] = useState(searchParams.get("free") === "true");
@@ -246,21 +273,14 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
   const [dateTo, setDateTo] = useState(() => sanitizeFilterParam("dateTo", searchParams));
   const [costAssumptions, setCostAssumptions] = useState<CostAssumptions>(() =>
     normalizeCostAssumptions({
-      outputTokenShare: parseCostAssumptionParam(
-        searchParams.get("avgOutputShare"),
-        DEFAULT_COST_ASSUMPTIONS.outputTokenShare,
-      ),
-      inputCacheHitRate: parseCostAssumptionParam(
-        searchParams.get("avgCacheHitRate"),
-        DEFAULT_COST_ASSUMPTIONS.inputCacheHitRate,
-      ),
+      outputTokenShare: parseCostAssumptionParam(searchParams.get("avgOutputShare"), DEFAULT_COST_ASSUMPTIONS.outputTokenShare),
+      inputCacheHitRate: parseCostAssumptionParam(searchParams.get("avgCacheHitRate"), DEFAULT_COST_ASSUMPTIONS.inputCacheHitRate),
     }),
   );
   const loadedStoredCostAssumptionsRef = useRef(false);
-  const [view, setView] = useState<"grid" | "list">(
-    searchParams.get("view") === "list" ? "list" : "grid"
-  );
+  const [view, setView] = useState<"grid" | "list">(searchParams.get("view") === "list" ? "list" : "grid");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [loadMoreMessage, setLoadMoreMessage] = useState("");
 
   // Shared URLs can carry raw cost-assumption params outside 0–1 (e.g.
   // ?avgOutputShare=999). normalizeCostAssumptions clamps them silently, so
@@ -486,12 +506,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       }
       const data: ModelsResponse = await res.json();
       setModels(data.data || []);
+      setDataUpdatedAt(Date.now());
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "An unexpected error occurred while fetching models."
-      );
+      setError(getFetchErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -847,7 +864,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     if (sortBy !== "newest") {
       const labels: Record<string, string> = {
         newest: "Newest first",
-        default: "Gateway order",
+        default: "Provider default order",
         oldest: "Oldest first",
         "price-asc": "Price: low to high",
         "price-desc": "Price: high to low",
@@ -877,15 +894,22 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
     [filteredModels, visibleCount]
   );
 
+  // lives inside pickBenchValueLeader). Never blended with page-wide pricing.
+  const benchValueLeader = useMemo(
+    () => pickBenchValueLeader(filteredModels),
+    [filteredModels],
+  );
   const hasMore = visibleCount < filteredModels.length;
 
   const loadMore = useCallback(() => {
-    setVisibleCount((prev) => prev + PAGE_SIZE);
-  }, []);
-
+    setVisibleCount((prev) => {
+      const next = Math.min(prev + PAGE_SIZE, filteredModels.length);
+      setLoadMoreMessage(`Showing ${next} of ${filteredModels.length} models`);
+      return next;
+    });
+  }, [filteredModels.length]);
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      {/* Header */}
       <header className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/60">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between gap-4">
@@ -909,9 +933,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
                 </svg>
               </div>
               <div>
-                <h1 className="text-base font-bold text-zinc-100 leading-none">
+                <p className="text-base font-bold text-zinc-100 leading-none">
                   Kilo Gateway
-                </h1>
+                </p>
                 <p className="text-xs text-zinc-400 leading-none mt-0.5">
                   AI Model Explorer
                 </p>
@@ -925,9 +949,9 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       {/* Hero */}
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
         <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-2">
             Latest AI Models
-          </h2>
+          </h1>
           <p className="text-zinc-400 text-sm sm:text-base max-w-2xl">
             Newest releases across every provider on the Kilo Gateway — compare price, context, and capability to pick the current best.
           </p>
@@ -962,6 +986,7 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
             onReset={handleReset}
             totalCount={models.length}
             filteredCount={filteredModels.length}
+            updatedAt={dataUpdatedAt ?? undefined}
             hiddenUnpricedCount={hiddenUnpricedCount}
             costAssumptions={costAssumptions}
             costAssumptionsActive={costAssumptionsActive}
@@ -1008,7 +1033,6 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
       )}
       </div>
 
-      {/* Content */}
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         {loading ? (
           <SkeletonGrid count={12} view={view} />
@@ -1018,30 +1042,78 @@ export function ModelsBrowser({ initialModels }: ModelsBrowserProps) {
           <EmptyState hasFilters={hasFilters} filterChips={activeFilterChips} onReset={handleReset} />
         ) : (
           <>
-            <div
-              className={
-                view === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                  : "flex flex-col gap-3"
-              }
-            >
-              {visibleModels.map((model) => (
-                <ModelCard
-                  key={model.id}
-                  model={model}
-                  view={view}
-                  costAssumptions={costAssumptions}
+            {benchValueLeader && (
+              <div className="mb-4">
+                <BenchValueStrip
+                  leader={benchValueLeader}
+                  scoredCount={filteredModels.filter((m) => m.terminalBench != null).length}
+                  totalCount={filteredModels.length}
                 />
-              ))}
-            </div>
+              </div>
+            )}
+            {/* Content: list view renders as a comparison table — a sticky
+                labeled header row sharing the exact grid template with each
+                ModelCard list row, so numeric columns align for scanning.
+                A footer line carries the shared per-1M assumption basis. */}
+            {view === "list" ? (
+              <div>
+                <div
+                  role="row"
+                  aria-rowindex={1}
+                  className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-2.5 sticky top-16 z-[5] bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800 text-xs uppercase tracking-wide text-zinc-400"
+                >
+                  <span>Model</span>
+                  <span className="text-right whitespace-nowrap">Context</span>
+                  <span className="text-right whitespace-nowrap">In $/1M</span>
+                  <span className="text-right whitespace-nowrap">Out $/1M</span>
+                  <span className="text-right whitespace-nowrap">Avg $/1M</span>
+                  <span className="text-center whitespace-nowrap">TB</span>
+                  <span className="text-right whitespace-nowrap">Age</span>
+                  <span className="sr-only">Actions</span>
+                </div>
+                <div className="flex flex-col gap-3 pt-3">
+                  {visibleModels.map((model) => (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      view={view}
+                      costAssumptions={costAssumptions}
+                      isBenchValueLeader={benchValueLeader?.id === model.id}
+                    />
+                  ))}
+                </div>
+                <p className="px-4 py-2.5 text-[11px] text-zinc-400 border border-zinc-800 rounded-xl bg-zinc-900/40 mt-3">
+                  Prices per 1M tokens · avg assumes {formatCostAssumptionSummary(costAssumptions)}
+                  {costAssumptionsActive && " (custom — adjust in More filters)"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {visibleModels.map((model) => (
+                  <ModelCard
+                    key={model.id}
+                    model={model}
+                    view={view}
+                    costAssumptions={costAssumptions}
+                    isBenchValueLeader={benchValueLeader?.id === model.id}
+                  />
+                ))}
+              </div>
+            )}
             {hasMore && <Pagination visibleCount={visibleModels.length} totalCount={filteredModels.length} onLoadMore={loadMore} />}
-            {!hasMore && visibleCount > PAGE_SIZE && (
-              <p
-                role="status"
-                className="text-center text-xs text-zinc-400 py-8"
-              >
-                All {filteredModels.length} models shown
-              </p>
+            {loadMoreMessage && <p role="status" aria-live="polite" className="sr-only">{loadMoreMessage}</p>}
+            {!hasMore && (
+              <div className="text-center text-xs py-8">
+                <p role="status" className="text-zinc-400">
+                  All {filteredModels.length} models shown
+                </p>
+                {dataUpdatedAt != null && (
+                  <FreshnessStamp
+                    updatedAt={dataUpdatedAt}
+                    className="mt-1 inline-block text-zinc-400"
+                  />
+                )}
+              </div>
             )}
           </>
         )}

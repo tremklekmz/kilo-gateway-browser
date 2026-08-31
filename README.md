@@ -52,7 +52,6 @@ A modern, high-performance AI model explorer built with Next.js 16, React 19, an
 - `src/app/`: Next.js App Router pages and layouts.
 - `src/components/`: Reusable React components (ModelCard, SearchFilter, etc.).
 - `src/lib/`: Utility functions and TypeScript type definitions.
-- `.kilocode/`: AI context and development recipes.
 
 ## Development
 

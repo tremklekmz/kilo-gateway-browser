@@ -9,10 +9,12 @@ import {
   formatContextLength,
   formatCreatedDate,
   formatCostAssumptionSummary,
+  formatDisplayName,
   formatPercent,
   formatRelativeAge,
   formatPrice,
   formatProviderName,
+  formatUsd,
   getProviderFromId,
   isFreeModel,
   isNewModel,
@@ -22,6 +24,8 @@ interface ModelCardProps {
   model: AIModel;
   view: "grid" | "list";
   costAssumptions?: CostAssumptions;
+  /** Set on the single benchmark-value leader card (coverage-gated upstream). */
+  isBenchValueLeader?: boolean;
 }
 
 function CopyIcon({ copied }: { copied: boolean }) {
@@ -106,95 +110,139 @@ function NewBadge() {
   );
 }
 
-function formatUsd(value: number, fractionDigits = 2): string {
-  if (!Number.isFinite(value)) return "—";
-  if (value >= 100) return `$${value.toFixed(0)}`;
-
-  return `$${value.toFixed(fractionDigits)}`;
+function BenchValueTick() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30 shrink-0"
+      title="Cheapest per attempt among the top TerminalBench scorers in the current results"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="10"
+        height="10"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M20 6 9 17l-5-5" />
+      </svg>
+      Best value
+    </span>
+  );
 }
 
 /**
- * Strips marketing suffixes the gateway appends to display names,
- * e.g. "Foo (free)" or "Bar ($$$)" — the badges/prices already say it.
+ * TerminalBench disclosure, two geometries:
+ * - stat-grid tile (default): a full-width pill in the card's stat grid,
+ *   rendered only when the model carries TB data (31/364 coverage — cards
+ *   without a score truthfully render nothing).
+ * - compact cell (compact): the TB column cell in list-view's comparison
+ *   table.
+ *
+ * Interaction is tap/click + keyboard (Enter/Space toggle, Escape close,
+ * outside-tap close) — no hover behavior, no <details> hover-trap. The
+ * popover carries the score scale hint so "76.2%" is decodable ("0-100,
+ * agentic terminal tasks").
  */
-function displayName(name: string): string {
-  return name.replace(/\s*\((free|\$+)\)\s*$/i, "");
-}
-
-function TerminalBenchBadge({
+function TerminalBenchStat({
   score,
   avgAttemptCostUsd,
+  compact = false,
 }: {
   score: number;
   avgAttemptCostUsd: number | null;
+  compact?: boolean;
 }) {
-  const costText =
-    avgAttemptCostUsd == null ? "not recorded" : formatUsd(avgAttemptCostUsd);
-  const ariaLabel = `TerminalBench: ${formatPercent(score, 1)}`;
-  const tooltipId = useId();
-  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const infoId = useId();
 
-  const hasHover = () =>
-    typeof window !== "undefined" &&
-    window.matchMedia("(hover: hover)").matches;
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
-  const handleMouseEnter = () => {
-    if (hasHover() && detailsRef.current) {
-      detailsRef.current.open = true;
-    }
-  };
+  const popover = open && (
+    <div
+      id={infoId}
+      role="tooltip"
+      className="absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-56 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs shadow-lg shadow-black/30"
+    >
+      <p className="font-semibold text-sky-400 mb-1">TerminalBench</p>
+      <p className="text-zinc-300">Overall: {formatPercent(score, 1)}</p>
+      <p className="text-zinc-400">Avg attempt cost: {formatUsd(avgAttemptCostUsd)}</p>
+      <p className="text-zinc-400 mt-1">0–100, agentic terminal tasks</p>
+    </div>
+  );
 
-  const handleMouseLeave = () => {
-    if (hasHover() && detailsRef.current) {
-      detailsRef.current.open = false;
-    }
-  };
-
-  const handleSummaryClick = (e: React.MouseEvent<HTMLElement>) => {
-    if (hasHover() && detailsRef.current?.open) {
-      e.preventDefault();
-    }
-  };
+  if (compact) {
+    return (
+      <div ref={rootRef} className="relative inline-block">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={`TerminalBench: ${formatPercent(score, 1)}`}
+          aria-describedby={open ? infoId : undefined}
+          className="inline-flex items-center gap-1 px-1.5 max-sm:min-h-[44px] max-sm:px-3 rounded-md text-xs font-medium bg-sky-500/10 text-sky-300 border border-sky-500/25 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="4 17 10 11 4 5" />
+            <line x1="12" x2="20" y1="19" y2="19" />
+          </svg>
+          {formatPercent(score, 1)}
+        </button>
+        {popover}
+      </div>
+    );
+  }
 
   return (
-    <details
-      ref={detailsRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className="group relative inline-block shrink-0"
-    >
-      <summary
-        onClick={handleSummaryClick}
-        aria-label={ariaLabel}
-        aria-describedby={tooltipId}
-        className="list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20 cursor-pointer select-none"
+    <div ref={rootRef} className="relative col-span-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-describedby={open ? infoId : undefined}
+        className="w-full flex flex-col items-center justify-center px-3 py-2 max-sm:min-h-[44px] rounded-lg bg-sky-500/10 border border-sky-500/25 min-w-0 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="10"
-          height="10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="4 17 10 11 4 5" />
-          <line x1="12" x2="20" y1="19" y2="19" />
-        </svg>
-        {formatPercent(score, 1)}
-      </summary>
-      <div
-        id={tooltipId}
-        role="tooltip"
-        className="hidden group-open:block absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-48 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs shadow-lg shadow-black/30"
-      >
-        <p className="font-semibold text-sky-400 mb-1">TerminalBench</p>
-        <p className="text-zinc-300">Overall: {formatPercent(score, 1)}</p>
-        <p className="text-zinc-400">Avg attempt cost: {costText}</p>
-      </div>
-    </details>
+        <span className="text-xs text-sky-400 font-medium uppercase tracking-wide leading-none mb-1">
+          TerminalBench
+        </span>
+        <span className="text-sm font-semibold text-sky-300 leading-none">
+          {formatPercent(score, 1)}
+        </span>
+      </button>
+      {popover}
+    </div>
   );
 }
 
@@ -268,9 +316,14 @@ function ModalityBadges({ modalities }: { modalities: string[] }) {
   if (!modalities || modalities.length === 0) return null;
   const normalized = modalities.map((m) => m.toLowerCase().split("+")[0].trim());
   const unique = Array.from(new Set(normalized));
+  // "text" is the near-universal baseline modality for a model gateway — it
+  // appears on ~90% of cards and carries no discriminating signal. Suppress it
+  // so only the differentiators (image/audio/video) render.
+  const discriminating = unique.filter((mod) => mod !== "text");
+  if (discriminating.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1">
-      {unique.map((mod) => {
+      {discriminating.map((mod) => {
         const cfg = MODALITY_CONFIG[mod];
         if (!cfg) return null;
         return (
@@ -294,21 +347,28 @@ function StatPill({
 }: {
   label: string;
   value: string;
-  /** Tooltip + accessible description for the pill (e.g. cost assumptions). */
   info?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const infoId = useId();
   return (
-    <div
-      className="flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0"
-      title={info}
-      aria-label={info ? `${label}: ${value} — ${info}` : undefined}
-    >
-      <span className="text-xs text-zinc-400 font-medium uppercase tracking-wide leading-none mb-1">
-        {label}
-      </span>
-      <span className="text-sm font-semibold text-zinc-200 leading-none truncate w-full text-center">
-        {value}
-      </span>
+    <div className="relative min-w-0">
+      <button
+        type="button"
+        onClick={() => info && setOpen((current) => !current)}
+        aria-label={info ? `${label}: ${value}. Show pricing assumptions` : `${label}: ${value}`}
+        aria-expanded={info ? open : undefined}
+        aria-describedby={info && open ? infoId : undefined}
+        className="w-full flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+      >
+        <span className="text-xs text-zinc-400 font-medium uppercase tracking-wide leading-none mb-1">{label}</span>
+        <span className="text-sm font-semibold text-zinc-200 leading-none truncate w-full text-center">{value}</span>
+      </button>
+      {info && open && (
+        <p id={infoId} className="absolute left-1/2 top-full z-20 mt-1 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-300 shadow-lg">
+          {info}
+        </p>
+      )}
     </div>
   );
 }
@@ -397,7 +457,12 @@ function ExpandableDescription({
   );
 }
 
-export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTIONS }: ModelCardProps) {
+export function ModelCard({
+  model,
+  view,
+  costAssumptions = DEFAULT_COST_ASSUMPTIONS,
+  isBenchValueLeader = false,
+}: ModelCardProps) {
   const [copied, setCopied] = useState(false);
   // Current time captured once per mount via the lazy initializer — the
   // sanctioned place for an impure clock read; render stays pure and the
@@ -452,113 +517,175 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
   const avgAssumptionSummary = formatCostAssumptionSummary(costAssumptions);
 
   if (view === "list") {
+    // Comparison-table row: an 8-column grid shared with the sticky header in
+    // ModelsBrowser (same template), so Context/In/Out/Avg/TB/Age align into
+    // true columns. Mobile collapses to a stacked single column.
     return (
-      <div className="group flex items-start gap-4 p-4 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+      <div className="group rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200 max-sm:p-4 sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-3">
+        {/* Model identity + badges */}
+        <div className="min-w-0 max-sm:mb-1">
+          <div className="flex items-center gap-2 mb-1">
             <h3 className="text-sm font-semibold text-zinc-100 truncate">
-              {displayName(model.name)}
+              {formatDisplayName(model.name)}
             </h3>
             <ProviderBadge provider={provider} />
             {free && <FreeBadge />}
             {isNew && <NewBadge />}
-            {model.terminalBench && (
-              <TerminalBenchBadge
-                score={model.terminalBench.overallScore}
-                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
-              />
-            )}
-            <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
           {model.description && (
-            <ExpandableDescription
-              text={model.description}
-              lineClamp={2}
-              className="text-xs text-zinc-400 leading-relaxed mb-2.5 break-words"
-            />
+            <>
+              <p className="hidden sm:block text-xs text-zinc-400 truncate leading-relaxed">
+                {model.description}
+              </p>
+              <p className="sm:hidden text-xs text-zinc-400 line-clamp-2 leading-relaxed mt-1">
+                {model.description}
+              </p>
+            </>
           )}
           {model.mayTrainOnYourPrompts && (
-            <div className="mb-2.5">
+            <div className="mt-2">
               <TrainingWarning />
             </div>
           )}
-          <div className="flex flex-wrap gap-3 text-xs text-zinc-400">
+        </div>
+        {/* Context */}
+        <span className="hidden sm:block text-sm font-medium text-zinc-300 text-right tabular-nums whitespace-nowrap">
+          {contextLength}
+        </span>
+        {/* In */}
+        <span
+          className={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+            free ? "text-neon-green" : "text-zinc-300"
+          }`}
+        >
+          {promptPrice}
+        </span>
+        {/* Out */}
+        <span
+          className={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+            free ? "text-neon-green" : "text-zinc-300"
+          }`}
+        >
+          {completionPrice}
+        </span>
+        {/* Avg */}
+        <span
+          className={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+            free ? "text-neon-green" : "text-zinc-300"
+          }`}
+        >
+          {avgPrice}
+        </span>
+        {/* TB: sparse column — em-dash when unscored, honest absence */}
+        <span className="hidden sm:flex justify-center">
+          {model.terminalBench ? (
+            <TerminalBenchStat
+              score={model.terminalBench.overallScore}
+              avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+              compact
+            />
+          ) : (
+            <span className="text-sm text-zinc-500" aria-hidden="true">
+              —
+            </span>
+          )}
+        </span>
+        {/* Age */}
+        <span className="hidden sm:block text-xs font-medium text-right whitespace-nowrap">
+          {relativeAge && (
+            <span
+              title={`Released ${createdDate}`}
+              aria-label={`Released ${createdDate}`}
+              className={isNew ? "text-violet-300" : relativeAgeFresh ? "text-zinc-300" : "text-zinc-400"}
+            >
+              {relativeAge}
+            </span>
+          )}
+        </span>
+        {/* Copy action */}
+        <span className="hidden sm:flex justify-end">
+          <button
+            onClick={handleCopy}
+            aria-live="polite"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+              copied
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-600"
+            }`}
+          >
+            <CopyIcon copied={copied} />
+            {copied ? "Copied!" : "Copy ID"}
+          </button>
+        </span>
+        {/* Mobile stack: everything desktop columns hold, card-style */}
+        <div className="sm:hidden space-y-2.5">
+          <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-zinc-400">
+            {model.terminalBench && (
+              <TerminalBenchStat
+                score={model.terminalBench.overallScore}
+                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+                compact
+              />
+            )}
             <span className="flex items-center gap-1">
-              <span className="text-zinc-400">Context:</span>
-              <span className="text-zinc-300 font-medium">{contextLength}</span>
+              Context: <span className="text-zinc-300 font-medium">{contextLength}</span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-400">In:</span>
+              In:{" "}
               <span className={`font-medium ${free ? "text-neon-green" : "text-zinc-300"}`}>
                 {promptPrice}
               </span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-400">Out:</span>
+              Out:{" "}
               <span className={`font-medium ${free ? "text-neon-green" : "text-zinc-300"}`}>
                 {completionPrice}
               </span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="text-zinc-400">Avg:</span>
+              Avg:{" "}
               <span className={`font-medium ${free ? "text-neon-green" : "text-zinc-300"}`}>
                 {avgPrice}
               </span>
             </span>
-            <span className="text-zinc-400 text-[11px]">
-              per 1M · {avgAssumptionSummary}
-            </span>
-            <span className="flex items-center gap-1 font-mono text-zinc-400 text-[11px]">
-              {model.id}
-            </span>
+          </div>
+          <div className="flex flex-wrap gap-3 text-[11px] text-zinc-400">
+            <span>per 1M · {avgAssumptionSummary}</span>
+            {relativeAge && <span className="font-mono">{model.id}</span>}
             {createdDate && relativeAge && (
-              <span
-                title={`Released ${createdDate}`}
-                aria-label={`Released ${createdDate}`}
-                className={`flex items-center gap-1 text-[11px] font-medium ${
-                  isNew ? "text-violet-300" : relativeAgeFresh ? "text-zinc-300" : "text-zinc-400"
-                }`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
-                </svg>
+              <span className={isNew ? "text-violet-300" : relativeAgeFresh ? "text-zinc-300" : "text-zinc-400"}>
                 {relativeAge}
+                <span className="text-zinc-500 font-normal"> · {createdDate}</span>
               </span>
             )}
           </div>
+          <button
+            onClick={handleCopy}
+            aria-live="polite"
+            className={`w-full min-h-[44px] flex items-center justify-center gap-1.5 px-4 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+              copied
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+            }`}
+          >
+            <CopyIcon copied={copied} />
+            {copied ? "Copied!" : "Copy ID"}
+          </button>
         </div>
-        <button
-          onClick={handleCopy}
-          aria-live="polite"
-          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 max-sm:px-4 max-sm:min-h-[44px] rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-            copied
-              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-              : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-600"
-          }`}
-        >
-          <CopyIcon copied={copied} />
-          {copied ? "Copied!" : "Copy ID"}
-        </button>
       </div>
     );
   }
-
   return (
     <div className="group flex flex-col p-5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200 hover:shadow-lg hover:shadow-black/20">
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-semibold text-zinc-100 leading-snug mb-1.5 line-clamp-2">
-            {displayName(model.name)}
+            {formatDisplayName(model.name)}
           </h3>
           <div className="flex flex-wrap gap-1.5">
             <ProviderBadge provider={provider} />
-            {model.terminalBench && (
-              <TerminalBenchBadge
-                score={model.terminalBench.overallScore}
-                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
-              />
-            )}
+            {isBenchValueLeader && <BenchValueTick />}
             <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
           </div>
         </div>
@@ -586,6 +713,12 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
           </div>
         )}
         <div className="grid grid-cols-2 gap-2 mb-3">
+          {model.terminalBench && (
+            <TerminalBenchStat
+              score={model.terminalBench.overallScore}
+              avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+            />
+          )}
           <StatPill label="Context" value={contextLength} />
           <StatPill
             label="Avg $/1M"
@@ -595,6 +728,9 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
           <StatPill label="In" value={promptPrice} />
           <StatPill label="Out" value={completionPrice} />
         </div>
+        <p className="mb-3 text-center text-[11px] leading-relaxed text-zinc-400">
+          Avg price per 1M · {avgAssumptionSummary}
+        </p>
 
         {/* Created date: relative age is the scan signal, absolute on hover/AT */}
         {createdDate && relativeAge && (
@@ -609,6 +745,10 @@ export function ModelCard({ model, view, costAssumptions = DEFAULT_COST_ASSUMPTI
               <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
             </svg>
             {relativeAge}
+            {/* Touch has no hover: surface the absolute date as visible text on max-sm. */}
+            <span className="hidden max-sm:inline text-zinc-400 font-normal">
+              {" "}· {createdDate}
+            </span>
           </p>
         )}
 

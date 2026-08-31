@@ -85,6 +85,24 @@ export function formatCostAssumptionSummary(assumptions: CostAssumptions): strin
 }
 
 /**
+ * Formats a USD value for compact display, e.g. "$113.54" or "$0.27".
+ * Returns an em-dash for null/undefined/NaN (no data recorded).
+ */
+export function formatUsd(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  if (value >= 100) return `$${value.toFixed(0)}`;
+  return `$${value.toFixed(2)}`;
+}
+
+/**
+ * Strips marketing suffixes the gateway appends to display names,
+ * e.g. "Foo (free)" or "Bar ($$$)" — the badges/prices already say it.
+ */
+export function formatDisplayName(name: string): string {
+  return name.replace(/\s*\((free|\$+)\)\s*$/i, "");
+}
+
+/**
  * Calculates a weighted average price per 1M tokens.
  *
  * With valid positive cacheRead pricing:

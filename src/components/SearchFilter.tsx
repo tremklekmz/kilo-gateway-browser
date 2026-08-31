@@ -17,6 +17,7 @@ import {
   SortBy,
   splitProviderParam,
 } from "@/lib/utils";
+import { FreshnessStamp } from "./FreshnessStamp";
 
 interface SearchFilterProps {
   search: string;
@@ -44,6 +45,8 @@ interface SearchFilterProps {
   onReset: () => void;
   totalCount: number;
   filteredCount: number;
+  /** Epoch ms when the current model data was last fetched; renders a live freshness stamp. */
+  updatedAt?: number;
   costAssumptions: CostAssumptions;
   costAssumptionsActive: boolean;
   onCostAssumptionsChange: (value: CostAssumptions) => void;
@@ -69,6 +72,24 @@ function ProviderCombobox({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const items = Array.from(dialog.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')).filter((el) => !el.hasAttribute("disabled"));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    dialog.addEventListener("keydown", onKeyDown);
+    return () => dialog.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -186,6 +207,7 @@ function ProviderCombobox({
           />
           {/* Popover (sm+) / bottom sheet (below sm) */}
           <div
+            ref={dialogRef}
             className="z-40 sm:absolute sm:left-0 sm:right-0 sm:top-full sm:bottom-auto sm:mt-2 fixed inset-x-0 bottom-0 sm:rounded-xl border border-zinc-700 bg-zinc-900 sm:shadow-xl shadow-2xl overflow-hidden flex flex-col max-sm:rounded-t-2xl"
             role="dialog"
             aria-modal="true"
@@ -483,6 +505,7 @@ export function SearchFilter({
   onReset,
   totalCount,
   filteredCount,
+  updatedAt,
   costAssumptions,
   costAssumptionsActive,
   onCostAssumptionsChange,
@@ -500,6 +523,24 @@ export function SearchFilter({
   // Mobile filters sheet (below sm): provider, sort, and the panel content
   // live here; the primary row collapses to search + Filters toggle + count.
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterDialogRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const dialog = filterDialogRef.current;
+    if (!dialog) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const items = Array.from(dialog.querySelectorAll<HTMLElement>('button, input, select, [tabindex]:not([tabindex="-1"])')).filter((el) => !el.hasAttribute("disabled"));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    dialog.addEventListener("keydown", onKeyDown);
+    return () => dialog.removeEventListener("keydown", onKeyDown);
+  }, [filtersOpen]);
 
   // Panel-only filters, shown in the More filters badge.
   const activeRangeCount =
@@ -889,14 +930,23 @@ export function SearchFilter({
 
         {/* Count readout — slim status line under the search on mobile */}
         <div
-          className="max-sm:py-0.5 max-sm:text-xs flex items-center justify-center sm:justify-start sm:px-3 sm:py-2.5 text-sm text-zinc-400 whitespace-nowrap"
-          role="status"
-          aria-label={`${filteredCount} of ${totalCount} models shown`}
+          className="max-sm:py-0.5 max-sm:text-xs flex items-center justify-start sm:px-3 sm:py-2.5 text-sm text-zinc-400 whitespace-nowrap"
         >
-          <span className="text-zinc-200 font-semibold">{filteredCount}</span>
-          <span className="mx-1">/</span>
-          <span>{totalCount}</span>
-          <span className="ml-1">models</span>
+          <span
+            role="status"
+            aria-label={`${filteredCount} of ${totalCount} models shown`}
+          >
+            <span className="text-zinc-200 font-semibold">{filteredCount}</span>
+            <span className="mx-1">/</span>
+            <span>{totalCount}</span>
+            <span className="ml-1">models</span>
+          </span>
+          {updatedAt != null && (
+            <FreshnessStamp
+              updatedAt={updatedAt}
+              className="ml-2 text-zinc-400"
+            />
+          )}
         </div>
 
         {/* Desktop controls (sm+) — the desktop row, unchanged */}
@@ -941,11 +991,8 @@ export function SearchFilter({
           </button>
         )}
       </div>
-
-      {/* Mobile filters sheet (below sm) — provider, sort, and panel content */}
       {filtersOpen && (
         <>
-          {/* Mobile backdrop — tap to close */}
           <button
             type="button"
             aria-label="Close filters"
@@ -953,6 +1000,7 @@ export function SearchFilter({
             className="fixed inset-0 z-30 bg-black/60 sm:hidden cursor-default"
           />
           <div
+            ref={filterDialogRef}
             id="filters-sheet"
             role="dialog"
             aria-modal="true"
