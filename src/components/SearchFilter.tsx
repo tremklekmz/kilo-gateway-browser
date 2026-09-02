@@ -42,8 +42,9 @@ interface SearchFilterProps {
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
   hasFilters: boolean;
+  hasFilterCriteria: boolean;
+  onResetFilters: () => void;
   onReset: () => void;
-  totalCount: number;
   filteredCount: number;
   /** Epoch ms when the current model data was last fetched; renders a live freshness stamp. */
   updatedAt?: number;
@@ -913,17 +914,17 @@ export function SearchFilter({
               </span>
             )}
           </button>
-          {hasFilters && (
+          {hasFilterCriteria && (
             <button
               type="button"
-              onClick={onReset}
+              onClick={onResetFilters}
               className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
             >
               <ResetIcon />
-              Reset
-              <span className="sr-only"> filters</span>
+              Reset filters
             </button>
           )}
+*** End
         </div>
 
         {/* Count readout — slim status line under the search on mobile */}
@@ -979,15 +980,16 @@ export function SearchFilter({
           )}
           <ChevronDownIcon open={expanded} />
         </button>
-        {hasFilters && (
+        {hasFilterCriteria && (
           <button
-            onClick={onReset}
+            onClick={onResetFilters}
             className="hidden sm:flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
           >
             <ResetIcon />
             Reset filters
           </button>
         )}
+*** End
       </div>
       {filtersOpen && (
         <>

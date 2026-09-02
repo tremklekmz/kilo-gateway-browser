@@ -247,25 +247,25 @@ function TerminalBenchStat({
 }
 
 function TrainingWarning() {
+  const [open, setOpen] = useState(false);
+  const infoId = useId();
   return (
-    <div className="flex items-start gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="shrink-0 mt-0.5"
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-describedby={open ? infoId : undefined}
+        className="flex items-center gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
-        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
-        <line x1="12" x2="12" y1="9" y2="13" />
-        <line x1="12" x2="12.01" y1="17" y2="17" />
-      </svg>
-      <span>This provider may train on your prompts.</span>
+        <span aria-hidden="true">!</span>
+        <span>This provider may train on your prompts.</span>
+      </button>
+      {open && (
+        <p id={infoId} className="mt-1 rounded-md border border-amber-500/20 bg-zinc-800 px-3 py-2 text-[11px] text-amber-200">
+          Review the provider&apos;s data-use policy before sending sensitive prompts.
+        </p>
+      )}
     </div>
   );
 }

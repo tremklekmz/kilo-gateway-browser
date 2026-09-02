@@ -474,7 +474,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
     updateUrl({ view: value });
   };
 
-  const handleReset = () => {
+  const handleResetFilters = () => {
     setSearch("");
     setSelectedProvider("");
     setFreeOnly(false);
@@ -485,8 +485,6 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
     setBenchMaxCost("");
     setDateFrom("");
     setDateTo("");
-    // Filters-only reset: cost assumptions are reset inside the More-filters
-    // panel, and `view` is not a filter — its URL param is preserved.
     const params = new URLSearchParams();
     if (view !== "grid") params.set("view", view);
     const queryString = params.toString();
@@ -494,6 +492,11 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
     startTransition(() => {
       router.replace(queryString ? `?${queryString}` : "/", { scroll: false });
     });
+  };
+
+  const handleReset = () => {
+    handleResetFilters();
+    handleCostAssumptionsChange(DEFAULT_COST_ASSUMPTIONS);
   };
 
   const fetchModels = async () => {
@@ -838,18 +841,10 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
   }, [models, search, selectedProvider, freeOnly, sortBy, userPickedSort, priceMin, priceMax, benchMin, benchMaxCost, dateFrom, dateTo, costAssumptions]);
 
   const costAssumptionsActive = !areCostAssumptionsDefault(costAssumptions);
-  const hasFilters =
-    !!search ||
-    !!selectedProvider ||
-    freeOnly ||
-    sortBy !== "newest" ||
-    !!priceMin ||
-    !!priceMax ||
-    !!benchMin ||
-    !!benchMaxCost ||
-    !!dateFrom ||
-    !!dateTo ||
-    costAssumptionsActive;
+  const hasFilterCriteria =
+    !!search || !!selectedProvider || freeOnly || sortBy !== "newest" ||
+    !!priceMin || !!priceMax || !!benchMin || !!benchMaxCost || !!dateFrom || !!dateTo;
+  const hasFilters = hasFilterCriteria || costAssumptionsActive;
 
   const activeFilterChips = useMemo(() => {
     const chips: string[] = [];
@@ -989,14 +984,14 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
             onDateFromChange={handleDateFromChange}
             onDateToChange={handleDateToChange}
             hasFilters={hasFilters}
+            hasFilterCriteria={hasFilterCriteria}
+            onResetFilters={handleResetFilters}
             onReset={handleReset}
             totalCount={models.length}
             filteredCount={filteredModels.length}
             updatedAt={dataUpdatedAt ?? undefined}
-            hiddenUnpricedCount={hiddenUnpricedCount}
             costAssumptions={costAssumptions}
             costAssumptionsActive={costAssumptionsActive}
-            onCostAssumptionsChange={handleCostAssumptionsChange}
           />
         )}
       {/* Shared-URL cost assumptions that were out of range got clamped — tell the recipient. */}
