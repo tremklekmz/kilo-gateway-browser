@@ -45,8 +45,8 @@ interface SearchFilterProps {
   hasFilterCriteria: boolean;
   onResetFilters: () => void;
   onReset: () => void;
+  totalCount: number;
   filteredCount: number;
-  /** Epoch ms when the current model data was last fetched; renders a live freshness stamp. */
   updatedAt?: number;
   costAssumptions: CostAssumptions;
   costAssumptionsActive: boolean;
@@ -503,6 +503,8 @@ export function SearchFilter({
   onDateFromChange,
   onDateToChange,
   hasFilters,
+  hasFilterCriteria,
+  onResetFilters,
   onReset,
   totalCount,
   filteredCount,

@@ -992,6 +992,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
             updatedAt={dataUpdatedAt ?? undefined}
             costAssumptions={costAssumptions}
             costAssumptionsActive={costAssumptionsActive}
+            onCostAssumptionsChange={handleCostAssumptionsChange}
           />
         )}
       {/* Shared-URL cost assumptions that were out of range got clamped — tell the recipient. */}
