@@ -87,16 +87,17 @@ export function BenchValueStrip({
         <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
       </svg>
       <p className="text-zinc-300 leading-snug flex-1 min-w-[16rem] max-sm:min-w-0">
-        Best benchmark value among scored models:{" "}
+        Best benchmark value among scored models: {" "}
         <span className="font-semibold text-sky-300">{leader.name}</span>
         <span className="text-zinc-400">
           {" "}
-          — {formatPercent(bench.overallScore, 1)} TerminalBench, {cost}
+          — {formatPercent(bench.overallScore, 1)} TerminalBench score (0–100), {cost}
         </span>
       </p>
-      <span className="ml-auto max-sm:ml-0 max-sm:basis-full text-[11px] text-zinc-500 whitespace-nowrap">
-        scored models only · {scoredCount} of {totalCount}
+      <span className="ml-auto max-sm:ml-0 max-sm:basis-full text-[11px] text-zinc-400 whitespace-nowrap">
+        benchmark measured for {scoredCount} of {totalCount} shown models
       </span>
+*** End
     </div>
   );
 }

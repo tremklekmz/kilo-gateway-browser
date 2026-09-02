@@ -654,14 +654,12 @@ export function SearchFilter({
       {/* Avg price range */}
       <div className="flex-1 min-w-[260px]">
         <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-          Avg price{" "}
-          <span className="text-zinc-400 font-normal normal-case tracking-normal">
-            ($/1M tokens)
-          </span>
+          Average cost ($/1M tokens)
         </label>
-        <p className="mb-2 text-xs text-zinc-400">
-          Uses the cost assumptions below.
+        <p className="mb-2 text-xs text-zinc-300">
+          Blended input/output estimate using {formatCostAssumptionSummary(normalizedCostAssumptions)}.
         </p>
+*** End
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
