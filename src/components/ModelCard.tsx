@@ -723,14 +723,22 @@ export function ModelCard({
           <StatPill
             label="Avg $/1M"
             value={avgPrice}
-            info={`Avg ${avgPrice} per 1M tokens — assumes ${avgAssumptionSummary}. Adjust in More filters.`}
+            info={`Average blended cost per 1M tokens. Uses ${avgAssumptionSummary}. Change it in Cost assumptions.`}
           />
-          <StatPill label="In" value={promptPrice} />
-          <StatPill label="Out" value={completionPrice} />
         </div>
+        <details className="mb-3 rounded-lg border border-zinc-800 bg-zinc-950/30">
+          <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-lg">
+            Direct token rates
+          </summary>
+          <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+            <StatPill label="In $/1M" value={promptPrice} />
+            <StatPill label="Out $/1M" value={completionPrice} />
+          </div>
+        </details>
         <p className="mb-3 text-center text-[11px] leading-relaxed text-zinc-400">
           Avg price per 1M · {avgAssumptionSummary}
         </p>
+*** End
 
         {/* Created date: relative age is the scan signal, absolute on hover/AT */}
         {createdDate && relativeAge && (
