@@ -949,12 +949,18 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
       {/* Hero */}
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 mb-2">
-            Latest AI Models
-          </h1>
-          <p className="text-zinc-400 text-sm sm:text-base max-w-2xl">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
+              Latest AI Models
+            </h1>
+            {dataUpdatedAt != null && (
+              <FreshnessStamp updatedAt={dataUpdatedAt} className="text-xs text-zinc-300" />
+            )}
+          </div>
+          <p className="mt-2 text-zinc-400 text-sm sm:text-base max-w-2xl">
             Newest releases across every provider on the Kilo Gateway — compare price, context, and capability to pick the current best.
           </p>
+          <p className="mt-2 text-xs text-zinc-400">Newest first · NEW marks releases from the last 14 days</p>
         </div>
 
         {/* Search & Filter */}
