@@ -97,7 +97,6 @@ export function BenchValueStrip({
       <span className="ml-auto max-sm:ml-0 max-sm:basis-full text-[11px] text-zinc-400 whitespace-nowrap">
         benchmark measured for {scoredCount} of {totalCount} shown models
       </span>
-*** End
     </div>
   );
 }

@@ -906,7 +906,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/60">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               {/* Logo mark */}
@@ -942,7 +942,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
       </header>
 
       {/* Hero */}
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
         <div className="mb-8">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100">
@@ -1007,7 +1007,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
           <button
             type="button"
             onClick={() => setAssumptionsAdjustedNotice(false)}
-            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors flex items-center justify-center max-sm:min-h-[44px] max-sm:min-w-[44px] -my-2 max-sm:-mx-1"
+            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors flex items-center justify-center max-sm:min-h-11 max-sm:min-w-11 -my-2 max-sm:-mx-1"
             aria-label="Dismiss notice"
           >
             ×
@@ -1026,7 +1026,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
           <button
             type="button"
             onClick={() => setInvalidParamsNotice(null)}
-            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors flex items-center justify-center max-sm:min-h-[44px] max-sm:min-w-[44px] -my-2 max-sm:-mx-1"
+            className="shrink-0 font-semibold text-amber-400 hover:text-amber-200 transition-colors flex items-center justify-center max-sm:min-h-11 max-sm:min-w-11 -my-2 max-sm:-mx-1"
             aria-label="Dismiss notice"
           >
             ×
@@ -1035,7 +1035,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
       )}
       </div>
 
-      <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         {loading ? (
           <SkeletonGrid count={12} view={view} />
         ) : error ? (
@@ -1062,7 +1062,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
                 <div
                   role="row"
                   aria-rowindex={1}
-                  className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-2.5 sticky top-16 z-[5] bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800 text-xs uppercase tracking-wide text-zinc-400"
+                  className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-2.5 sticky top-16 z-5 bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800 text-xs uppercase tracking-wide text-zinc-400"
                 >
                   <span>Model</span>
                   <span className="text-right whitespace-nowrap">Context</span>
@@ -1123,7 +1123,7 @@ export function ModelsBrowser({ initialModels, initialUpdatedAt }: ModelsBrowser
 
       {/* Footer */}
       <footer className="border-t border-zinc-800/60 py-6">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-400">
           Data sourced from{" "}
           <a
             href="https://api.kilo.ai/api/gateway/models"

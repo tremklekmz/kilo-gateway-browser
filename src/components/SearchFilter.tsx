@@ -296,14 +296,14 @@ function ProviderCombobox({
               <button
                 type="button"
                 onClick={() => commit([])}
-                className="px-2 py-1 text-xs max-sm:min-h-[44px] max-sm:text-sm rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+                className="px-2 py-1 text-xs max-sm:min-h-11 max-sm:text-sm rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
               >
                 Clear
               </button>
               <button
                 type="button"
                 onClick={close}
-                className="px-2 py-1 text-xs max-sm:min-h-[44px] max-sm:text-sm rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+                className="px-2 py-1 text-xs max-sm:min-h-11 max-sm:text-sm rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
               >
                 Done
               </button>
@@ -662,7 +662,6 @@ export function SearchFilter({
         <p className="mb-2 text-xs text-zinc-300">
           Blended input/output estimate using {formatCostAssumptionSummary(normalizedCostAssumptions)}.
         </p>
-*** End
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
@@ -825,7 +824,7 @@ export function SearchFilter({
               <button
                 type="button"
                 onClick={() => onCostAssumptionsChange(DEFAULT_COST_ASSUMPTIONS)}
-                className="shrink-0 text-xs text-zinc-400 hover:text-zinc-300 transition-colors max-sm:min-h-[44px]"
+                className="shrink-0 text-xs text-zinc-400 hover:text-zinc-300 transition-colors max-sm:min-h-11"
               >
                 Reset assumptions
               </button>
@@ -888,7 +887,7 @@ export function SearchFilter({
               type="button"
               onClick={() => onSearchChange("")}
               aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-zinc-400 hover:text-zinc-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-lg max-sm:min-h-[44px] max-sm:min-w-[44px]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-zinc-400 hover:text-zinc-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-lg max-sm:min-h-11 max-sm:min-w-11"
             >
               <ClearIcon />
             </button>
@@ -911,7 +910,7 @@ export function SearchFilter({
             <SlidersIcon />
             Filters
             {activeRangeCount > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-xs font-semibold">
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-xs font-semibold">
                 {activeRangeCount}
               </span>
             )}
@@ -926,7 +925,6 @@ export function SearchFilter({
               Reset filters
             </button>
           )}
-*** End
         </div>
 
         {/* Count readout — slim status line under the search on mobile */}
@@ -976,7 +974,7 @@ export function SearchFilter({
           <SlidersIcon />
           {expanded ? "Hide filters" : "More filters"}
           {activeRangeCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-xs font-semibold">
+            <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-xs font-semibold">
               {activeRangeCount}
             </span>
           )}
@@ -991,7 +989,6 @@ export function SearchFilter({
             Reset filters
           </button>
         )}
-*** End
       </div>
       {filtersOpen && (
         <>
@@ -1015,7 +1012,7 @@ export function SearchFilter({
                 type="button"
                 onClick={() => setFiltersOpen(false)}
                 aria-label="Close filters"
-                className="flex items-center justify-center min-h-[44px] min-w-[44px] -m-2 rounded-lg text-zinc-400 hover:text-zinc-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                className="flex items-center justify-center min-h-11 min-w-11 -m-2 rounded-lg text-zinc-400 hover:text-zinc-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
               >
                 <ClearIcon />
               </button>
