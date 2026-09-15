@@ -3,10 +3,9 @@ import {
   createMemo,
   createSignal,
   For,
-  onCleanup,
   Show,
-  type JSX,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import type { AppState } from "@/lib/appState";
 import {
   DEFAULT_COST_ASSUMPTIONS,
@@ -46,41 +45,48 @@ function ProviderCombobox(props: {
   let dialogRef: HTMLDivElement | undefined;
 
   // Focus trap inside the aria-modal popover (mobile bottom sheet + desktop
-  // popover share the dialog).
-  createEffect(() => {
-    if (!open() || !dialogRef) return;
-    const dialog = dialogRef;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") return;
-      const items = Array.from(
-        dialog.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])'),
-      ).filter((el) => !el.hasAttribute("disabled"));
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    dialog.addEventListener("keydown", onKeyDown);
-    onCleanup(() => dialog.removeEventListener("keydown", onKeyDown));
-  });
+  // popover share the dialog). Compute phase tracks `open()`; the untracked
+  // effect phase owns the listener and returns its cleanup.
+  createEffect(
+    () => open(),
+    (isOpen) => {
+      const dialog = dialogRef;
+      if (!isOpen || !dialog) return;
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== "Tab") return;
+        const items = Array.from(
+          dialog.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])'),
+        ).filter((el) => !el.hasAttribute("disabled"));
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+      dialog.addEventListener("keydown", onKeyDown);
+      return () => dialog.removeEventListener("keydown", onKeyDown);
+    },
+  );
 
-  createEffect(() => {
-    if (!open()) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (rootRef && !rootRef.contains(event.target as Node)) {
-        setOpen(false);
-        triggerRef?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    onCleanup(() => document.removeEventListener("pointerdown", onPointerDown));
-  });
+  createEffect(
+    () => open(),
+    (isOpen) => {
+      if (!isOpen) return;
+      const onPointerDown = (event: PointerEvent) => {
+        if (rootRef && !rootRef.contains(event.target as Node)) {
+          setOpen(false);
+          triggerRef?.focus();
+        }
+      };
+      document.addEventListener("pointerdown", onPointerDown);
+      return () => document.removeEventListener("pointerdown", onPointerDown);
+    },
+  );
 
   const filtered = createMemo(() => {
     const q = query().trim().toLowerCase();
@@ -131,9 +137,12 @@ function ProviderCombobox(props: {
     }
   };
 
-  createEffect(() => {
-    listRef?.children[activeIndex()]?.scrollIntoView({ block: "nearest" });
-  });
+  createEffect(
+    () => activeIndex(),
+    (index) => {
+      listRef?.children[index]?.scrollIntoView({ block: "nearest" });
+    },
+  );
 
   const triggerLabel = createMemo(() => {
     if (selected().length === 0) return "All Providers";
@@ -149,7 +158,7 @@ function ProviderCombobox(props: {
         onClick={() => setOpen((v) => !v)}
         onKeyDown={triggerKeyDown}
         aria-haspopup="listbox"
-        aria-expanded={open()}
+        aria-expanded={open() ? "true" : "false"}
         aria-controls={open() ? "provider-listbox" : undefined}
         class={`relative w-full flex items-center justify-between gap-2 pl-3 pr-8 py-2.5 max-sm:py-3 border rounded-xl text-sm transition-all duration-200 cursor-pointer focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 focus-visible:ring-2 focus-visible:ring-violet-400 ${
           selected().length > 0
@@ -222,7 +231,7 @@ function ProviderCombobox(props: {
                     <li
                       id={`provider-option-${p}`}
                       role="option"
-                      aria-selected={isSelected()}
+                      aria-selected={isSelected() ? "true" : "false"}
                       onClick={() => toggleProvider(p)}
                       class={`flex items-center gap-2 px-3 py-2 max-sm:py-3 rounded-lg text-sm cursor-pointer transition-colors ${
                         index() === activeIndex()
@@ -458,40 +467,46 @@ export function SearchFilter(props: SearchFilterProps) {
   let filterDialogRef: HTMLDivElement | undefined;
 
   // Escape closes the mobile filters sheet (backdrop and Done handle taps).
-  createEffect(() => {
-    if (!filtersOpen()) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setFiltersOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    onCleanup(() => document.removeEventListener("keydown", onKeyDown));
-  });
+  createEffect(
+    () => filtersOpen(),
+    (isOpen) => {
+      if (!isOpen) return;
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") setFiltersOpen(false);
+      };
+      document.addEventListener("keydown", onKeyDown);
+      return () => document.removeEventListener("keydown", onKeyDown);
+    },
+  );
 
   // Focus trap inside the aria-modal mobile filters sheet.
-  createEffect(() => {
-    const dialog = filterDialogRef;
-    if (!filtersOpen() || !dialog) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") return;
-      const items = Array.from(
-        dialog.querySelectorAll<HTMLElement>(
-          'button, input, select, [tabindex]:not([tabindex="-1"])',
-        ),
-      ).filter((el) => !el.hasAttribute("disabled"));
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    dialog.addEventListener("keydown", onKeyDown);
-    onCleanup(() => dialog.removeEventListener("keydown", onKeyDown));
-  });
+  createEffect(
+    () => filtersOpen(),
+    (isOpen) => {
+      const dialog = filterDialogRef;
+      if (!isOpen || !dialog) return;
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== "Tab") return;
+        const items = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'button, input, select, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((el) => !el.hasAttribute("disabled"));
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+      dialog.addEventListener("keydown", onKeyDown);
+      return () => dialog.removeEventListener("keydown", onKeyDown);
+    },
+  );
 
   const activeRangeCount = createMemo(() => {
     const f = app.filters();
@@ -519,13 +534,15 @@ export function SearchFilter(props: SearchFilterProps) {
   // expansion (the <details> remounts with the panel, so non-default
   // assumptions must stay discoverable after collapse + re-expand).
   const [assumptionsOverride, setAssumptionsOverride] = createSignal<boolean | null>(null);
-  const [lastExpanded, setLastExpanded] = createSignal(expanded());
-  createEffect(() => {
-    if (expanded() !== lastExpanded()) {
-      setLastExpanded(expanded());
-      if (expanded()) setAssumptionsOverride(null);
-    }
-  });
+  // Reset the override each time the panel expands to true (effect phase is an
+  // imperative scope, so the write is legal here; `lastExpanded` scaffolding
+  // from Solid 1 is gone — the compute phase already fires only on changes).
+  createEffect(
+    () => expanded(),
+    (isExpanded) => {
+      if (isExpanded) setAssumptionsOverride(null);
+    },
+  );
   const assumptionsOpen = () =>
     assumptionsOverride() ?? (expanded() && activeAssumptionsActive());
 
@@ -587,7 +604,7 @@ export function SearchFilter(props: SearchFilterProps) {
         </label>
         <button
           onClick={() => app.updateFilters({ freeOnly: !app.filters().freeOnly })}
-          aria-pressed={app.filters().freeOnly}
+          aria-pressed={app.filters().freeOnly ? "true" : "false"}
           class={`flex items-center gap-2 px-3 py-2.5 max-sm:py-3 rounded-xl text-sm font-medium border transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
             app.filters().freeOnly
               ? "bg-neon-green/10 text-neon-green border-neon-green/30"
@@ -847,7 +864,7 @@ export function SearchFilter(props: SearchFilterProps) {
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            aria-expanded={filtersOpen()}
+            aria-expanded={filtersOpen() ? "true" : "false"}
             aria-controls="filters-sheet"
             class={`flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-medium border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
               activeRangeCount() > 0
@@ -910,7 +927,7 @@ export function SearchFilter(props: SearchFilterProps) {
         {/* More filters toggle — desktop inline expand */}
         <button
           onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded()}
+          aria-expanded={expanded() ? "true" : "false"}
           aria-controls="more-filters-panel"
           class={`hidden sm:flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
             activeRangeCount() > 0

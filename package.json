@@ -11,16 +11,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "solid-js": "^1.9.9"
+    "@solidjs/web": "^2.0.0-rc.8",
+    "solid-js": "^2.0.0-rc.8"
   },
   "devDependencies": {
+    "@solidjs/vite-plugin": "^3.0.0-next.43",
     "@tailwindcss/vite": "^4.1.17",
+    "@types/node": "^24.10.2",
+    "eslint": "^9.39.1",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",
-    "vite": "^7.1.11",
-    "vite-plugin-solid": "^2.11.9",
-    "eslint": "^9.39.1",
     "typescript-eslint": "^8.46.2",
-    "@types/node": "^24.10.2"
+    "vite": "^8.3.0"
   }
 }
