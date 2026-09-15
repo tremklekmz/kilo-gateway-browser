@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Kilo Gateway — AI Model Explorer. A recency-first, searchable explorer of every AI model exposed by the Kilo Gateway API. Stack: **SolidJS 1.9 (signals), Vite 7, Tailwind CSS 4, TypeScript (strict), npm**. Deployed as a static SPA on **GitHub Pages** under `/<repo>/`.
+Kilo Gateway — AI Model Explorer. A recency-first, searchable explorer of every AI model exposed by the Kilo Gateway API. Stack: **SolidJS 2.0 RC (signals, `@solidjs/web` renderer), Vite 8, Tailwind CSS 4, TypeScript (strict), npm**. Deployed as a static SPA on **GitHub Pages** under `/<repo>/`.
 
 Product lens is **recency**: newest releases lead, models released in the last 14 days carry a `NEW` badge, and placeholders (`created === 0`) sink to the end. The core job is to compare models by price (per-model + weighted average under user-configurable cost assumptions), context length, modalities, and sparse TerminalBench scores.
 
@@ -14,7 +14,7 @@ Documented principles (PRODUCT.md) you must respect: numbers stay honest (price 
 
 **Committed snapshot (CORS workaround)**: the gateway API sends no CORS headers, so a browser SPA cannot call it. `scripts/sync-models.mjs` (Node built-ins only) fetches the catalogue into `public/data/models.json`, which ships as a static asset. Locally: `npm run models:sync`. In CI: `.github/workflows/deploy.yml` runs every 15 minutes, commits the snapshot when its bytes changed, then builds and deploys. The app fetches only `MODELS_SNAPSHOT_URL` (`${BASE_URL}data/models.json`).
 
-**URL-as-state engine** (the central pattern): `src/lib/appState.ts` owns the whole engine. Every filter, sort, view, and cost-assumption write lands in both the signal and the URL in one `batch()` — `updateFilters` serializes to query params and calls `history.replaceState`, so the URL is the single shareable truth and a rendered frame never shows state the URL does not confirm. Search is debounced (250 ms); all other writes are immediate. There is no router, so the React port's self-echo suppression machinery does not exist here — `replaceState` fires no navigation events. Invalid shared params are validated, named once in a dismissible amber `role="status"` notice, then pruned from the URL once (notice persists until dismissed).
+**URL-as-state engine** (the central pattern): `src/lib/appState.ts` owns the whole engine. Every filter, sort, view, and cost-assumption write lands in both the signal and the URL in one handler — `updateFilters` computes the next state, writes the signal, and serializes to query params via `history.replaceState` in the same synchronous step (Solid 2 staged writes forbid side effects inside functional setters), so the URL is the single shareable truth and a rendered frame never shows state the URL does not confirm. Search is debounced (250 ms); all other writes are immediate. There is no router, so the React port's self-echo suppression machinery does not exist here — `replaceState` fires no navigation events. Invalid shared params are validated, named once in a dismissible amber `role="status"` notice, then pruned from the URL once (notice persists until dismissed).
 
 **Filter pipeline** (in `App.tsx`, `filtered` memo): search → provider (CSV multi-select) → free-only → avg-price range ($/1M) → `terminalBench.overallScore` min → `benchMaxCost` max → created-date range. Then **sort** (newest / oldest / default / price-asc|desc / bench-asc|desc). When a search query is active **and** the user hasn't explicitly picked a sort this session (`userPickedSort`), relevance ordering wins; placeholders always sink to the end. Pagination is 40/page (`PAGE_SIZE`).
 
@@ -83,8 +83,8 @@ Bun works too (`bun run dev`, etc.); there is no lockfile committed yet. There i
 ## Runtime & Tooling Preferences
 
 - **Package manager: npm** (CI uses `npm ci`; add a lockfile via `npm install` before merging). Bun works for local runs.
-- **Pinned majors** (sensitivity): `solid-js` ^1.9; `vite` ^7; `typescript` ^5.9 (peer-constrained `<6`); `tailwindcss` + `@tailwindcss/vite` ^4.1; `eslint` ^9 flat config with `typescript-eslint`.
-- **TypeScript**: `strict`, `moduleResolution: "bundler"`, `jsx: "preserve"` + `jsxImportSource: "solid-js"`, `noEmit`, `isolatedModules`. Path alias **`@/*` → `src/*`** — declared in `tsconfig.json` **and** mirrored in `vite.config.ts` `resolve.alias` (TS alone does not affect the build).
+- **Pinned majors** (sensitivity): `solid-js` + `@solidjs/web` 2.0.0-rc.8 (pin exact while on the RC — upgrade together); `@solidjs/vite-plugin` ^3.0.0-next; `vite` ^8; `typescript` ^5.9 (peer-constrained `<6`); `tailwindcss` + `@tailwindcss/vite` ^4.1; `eslint` ^9 flat config with `typescript-eslint`.
+- **TypeScript**: `strict`, `moduleResolution: "bundler"`, `jsx: "preserve"` + `jsxImportSource: "@solidjs/web"`, `noEmit`, `isolatedModules`. Path alias **`@/*` → `src/*`** — declared in `tsconfig.json` **and** mirrored in `vite.config.ts` `resolve.alias` (TS alone does not affect the build).
 - **Tailwind v4 is CSS-first**: no `tailwind.config`, no `content` array. `src/index.css` does `@import "tailwindcss"` + `@theme` tokens; `@tailwindcss/vite` wires the plugin.
 - **ESLint 9 flat config**: `typescript-eslint` recommended; ignores `node_modules`, `dist`, `public/data`, and harness dirs (`.omp`, `.impeccable`, `.kilo`).
 - **GitHub Pages project site**: the workflow sets `BASE_PATH=/<repo>/`; `vite.config.ts` maps it to Vite's `base`. Do not hardcode absolute asset paths — `favicon.ico` is referenced relatively.

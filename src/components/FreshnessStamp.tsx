@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "solid-js";
+import { createSignal, onSettled } from "solid-js";
 
 function formatFreshness(updatedAtMs: number, nowMs: number): string {
   const delta = Math.max(0, nowMs - updatedAtMs);
@@ -19,8 +19,10 @@ function formatFreshness(updatedAtMs: number, nowMs: number): string {
  */
 export function FreshnessStamp(props: { updatedAt: number; class?: string }) {
   const [now, setNow] = createSignal(Date.now());
-  const timer = setInterval(() => setNow(Date.now()), 30_000);
-  onCleanup(() => clearInterval(timer));
+  onSettled(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  });
 
   return (
     <time

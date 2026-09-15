@@ -1,4 +1,4 @@
-import { batch, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 import type { AIModel, ModelsResponse } from "@/lib/types";
 import {
   areCostAssumptionsDefault,
@@ -263,11 +263,20 @@ export interface AppState {
  */
 export function createAppState(): AppState {
   const initialParams = new URLSearchParams(window.location.search);
+  // Initial filter state is computed synchronously from the URL (plus stored
+  // cost assumptions when the URL carries none) and folded into the signal's
+  // initial value — Solid 2 rejects signal writes from the owned component
+  // scope this factory runs in.
+  const initialFilters = readFiltersFromUrl(initialParams);
+  if (!initialParams.has("avgOutputShare") && !initialParams.has("avgCacheHitRate")) {
+    const stored = readStoredCostAssumptions();
+    if (stored) initialFilters.costAssumptions = stored;
+  }
   const [models, setModels] = createSignal<AIModel[]>([]);
   const [dataUpdatedAt, setDataUpdatedAt] = createSignal<number | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
-  const [filters, setFilters] = createSignal<AppFilters>(readFiltersFromUrl(initialParams));
+  const [filters, setFilters] = createSignal<AppFilters>(initialFilters);
   const [userPickedSort, setUserPickedSort] = createSignal(
     (SORT_VALUES as readonly string[]).includes(initialParams.get("sort") ?? ""),
   );
@@ -292,16 +301,6 @@ export function createAppState(): AppState {
     replaceQuery(params.toString());
   }
 
-  // A shared URL carrying out-of-range cost assumptions (clamped silently)
-  // would otherwise show different numbers than the sender saw; if stored
-  // assumptions exist and the URL carries none, they win as before.
-  if (!initialParams.has("avgOutputShare") && !initialParams.has("avgCacheHitRate")) {
-    const stored = readStoredCostAssumptions();
-    if (stored) {
-      setFilters((prev) => ({ ...prev, costAssumptions: stored }));
-    }
-  }
-
   async function refresh() {
     setLoading(true);
     setError(null);
@@ -309,26 +308,25 @@ export function createAppState(): AppState {
       const res = await fetch(MODELS_SNAPSHOT_URL);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const data: ModelsResponse = await res.json();
-      batch(() => {
-        setModels(data.data ?? []);
-        setDataUpdatedAt(Date.now());
-      });
+      setModels(data.data ?? []);
+      setDataUpdatedAt(Date.now());
     } catch (err) {
       setError(getFetchErrorMessage(err));
     } finally {
       setLoading(false);
     }
   }
-  void refresh();
+  // Consecutive writes already batch on the next microtask in Solid 2, and
+  // the fetch kick-off is a signal write — defer it out of the owned scope.
+  queueMicrotask(() => void refresh());
 
   function updateFilters(patch: Partial<AppFilters>) {
-    batch(() => {
-      setFilters((prev) => {
-        const next = { ...prev, ...patch };
-        replaceQuery(serializeFilters(next));
-        return next;
-      });
-    });
+    // Compute next from the committed value, then write the signal and the
+    // URL from the same object — no side effects inside the setter, so the
+    // URL never disagrees with the state being committed.
+    const next = { ...filters(), ...patch };
+    setFilters(next);
+    replaceQuery(serializeFilters(next));
     if (patch.costAssumptions !== undefined) {
       writeStoredCostAssumptions(patch.costAssumptions);
     }
@@ -347,34 +345,34 @@ export function createAppState(): AppState {
     }, 250);
   }
 
-  function resetFilters() {
-    const view = filters().view;
-    const costAssumptions = filters().costAssumptions;
-    batch(() => {
-      setFilters({
-        search: "",
-        selectedProvider: "",
-        freeOnly: false,
-        sortBy: "newest",
-        priceMin: "",
-        priceMax: "",
-        benchMin: "",
-        benchMaxCost: "",
-        dateFrom: "",
-        dateTo: "",
-        costAssumptions,
-        view,
-      });
-      replaceQuery(view !== "grid" ? `view=${view}` : "");
-      setVisibleCount(PAGE_SIZE);
-    });
+  function resetFilters(keepAssumptions = filters().costAssumptions) {
+    // Compute the full next object up front (including the URL write) — under
+    // Solid 2 staged writes, reading after a setter in the same scope would
+    // still see the previous committed value.
+    const next: AppFilters = {
+      search: "",
+      selectedProvider: "",
+      freeOnly: false,
+      sortBy: "newest",
+      priceMin: "",
+      priceMax: "",
+      benchMin: "",
+      benchMaxCost: "",
+      dateFrom: "",
+      dateTo: "",
+      costAssumptions: keepAssumptions,
+      view: filters().view,
+    };
+    setFilters(next);
+    replaceQuery(next.view !== "grid" ? `view=${next.view}` : "");
+    setVisibleCount(PAGE_SIZE);
   }
 
   function resetAll() {
-    const nextAssumptions = DEFAULT_COST_ASSUMPTIONS;
-    writeStoredCostAssumptions(nextAssumptions);
-    setFilters((prev) => ({ ...prev, costAssumptions: nextAssumptions }));
-    resetFilters();
+    writeStoredCostAssumptions(DEFAULT_COST_ASSUMPTIONS);
+    // Pass the assumptions explicitly: resetFilters must not read the signal
+    // after the write above (staged writes still return the old value here).
+    resetFilters(DEFAULT_COST_ASSUMPTIONS);
   }
 
   return {
@@ -394,20 +392,16 @@ export function createAppState(): AppState {
     resetFilters,
     resetAll,
     setSortBy: (value) => {
-      batch(() => {
-        setUserPickedSort(true);
-        updateFilters({ sortBy: value });
-      });
+      setUserPickedSort(true);
+      updateFilters({ sortBy: value });
     },
     setCostAssumptions: (value) => updateFilters({ costAssumptions: normalizeCostAssumptions(value) }),
     dismissAssumptionsNotice: () => setAssumptionsAdjustedNotice(false),
     dismissInvalidParamsNotice: () => setInvalidParamsNotice(null),
     loadMore: (filteredTotal) => {
       const next = Math.min(visibleCount() + PAGE_SIZE, filteredTotal);
-      batch(() => {
-        setVisibleCount(next);
-        setLoadMoreMessage(`Showing ${next} of ${filteredTotal} models`);
-      });
+      setVisibleCount(next);
+      setLoadMoreMessage(`Showing ${next} of ${filteredTotal} models`);
     },
   };
 }

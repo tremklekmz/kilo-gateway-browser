@@ -1,4 +1,5 @@
-import { createSignal, onCleanup, onMount, Show, type JSX } from "solid-js";
+import { createSignal, onSettled, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import type { AIModel } from "@/lib/types";
 import {
   calculateAveragePrice,
@@ -167,13 +168,13 @@ function TerminalBenchStat(props: {
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") setOpen(false);
   };
-  onMount(() => {
+  onSettled(() => {
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
-  });
-  onCleanup(() => {
-    document.removeEventListener("pointerdown", onPointerDown);
-    document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   });
 
   const popover = (
@@ -197,7 +198,7 @@ function TerminalBenchStat(props: {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-expanded={open()}
+          aria-expanded={open() ? "true" : "false"}
           aria-label={`TerminalBench: ${formatPercent(props.score, 1)}`}
           aria-describedby={open() ? infoId : undefined}
           class="inline-flex items-center gap-1 px-1.5 max-sm:min-h-[44px] max-sm:px-3 rounded-md text-xs font-medium bg-sky-500/10 text-sky-300 border border-sky-500/25 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
@@ -229,7 +230,7 @@ function TerminalBenchStat(props: {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-expanded={open()}
+        aria-expanded={open() ? "true" : "false"}
         aria-describedby={open() ? infoId : undefined}
         class="w-full flex flex-col items-center justify-center px-3 py-2 max-sm:min-h-[44px] rounded-lg bg-sky-500/10 border border-sky-500/25 min-w-0 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
@@ -253,7 +254,7 @@ function TrainingWarning() {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-expanded={open()}
+        aria-expanded={open() ? "true" : "false"}
         aria-describedby={open() ? infoId : undefined}
         class="flex items-center gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
@@ -352,7 +353,7 @@ function StatPill(props: { label: string; value: string; info?: string }) {
         aria-label={
           props.info ? `${props.label}: ${props.value}. Show pricing assumptions` : `${props.label}: ${props.value}`
         }
-        aria-expanded={props.info ? open() : undefined}
+        aria-expanded={props.info ? (open() ? "true" : "false") : undefined}
         aria-describedby={props.info && open() ? infoId : undefined}
         class="w-full flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
@@ -384,7 +385,7 @@ function ExpandableDescription(props: {
   const [isClamped, setIsClamped] = createSignal(false);
   let ref: HTMLParagraphElement | undefined;
 
-  onMount(() => {
+  onSettled(() => {
     const measure = () => {
       const el = ref;
       if (!el || expanded()) return;
@@ -416,7 +417,7 @@ function ExpandableDescription(props: {
     measure();
     const ro = new ResizeObserver(measure);
     if (ref) ro.observe(ref);
-    onCleanup(() => ro.disconnect());
+    return () => ro.disconnect();
   });
 
   return (
@@ -443,7 +444,7 @@ function ExpandableDescription(props: {
             e.stopPropagation();
             setExpanded((v) => !v);
           }}
-          aria-expanded={expanded()}
+          aria-expanded={expanded() ? "true" : "false"}
           class="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded"
         >
           {expanded() ? "Show less" : "Show more"}
@@ -467,8 +468,10 @@ export function ModelCard(props: ModelCardProps) {
   const contextLength = () => formatContextLength(props.model.context_length);
 
   let copiedTimer: number | undefined;
-  onCleanup(() => {
-    if (copiedTimer !== undefined) clearTimeout(copiedTimer);
+  onSettled(() => {
+    return () => {
+      if (copiedTimer !== undefined) clearTimeout(copiedTimer);
+    };
   });
 
   const handleCopy = async () => {

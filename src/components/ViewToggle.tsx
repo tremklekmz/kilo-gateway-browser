@@ -60,7 +60,7 @@ export function ViewToggle(props: ViewToggleProps) {
         onClick={() => props.onViewChange("grid")}
         title="Grid view"
         aria-label="Grid view"
-        aria-pressed={props.view === "grid"}
+        aria-pressed={props.view === "grid" ? "true" : "false"}
         class={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 max-sm:w-11 max-sm:h-11 ${
           props.view === "grid" ? "bg-zinc-700 shadow-sm" : "hover:bg-zinc-800"
         }`}
@@ -71,7 +71,7 @@ export function ViewToggle(props: ViewToggleProps) {
         onClick={() => props.onViewChange("list")}
         title="List view"
         aria-label="List view"
-        aria-pressed={props.view === "list"}
+        aria-pressed={props.view === "list" ? "true" : "false"}
         class={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 max-sm:w-11 max-sm:h-11 ${
           props.view === "list" ? "bg-zinc-700 shadow-sm" : "hover:bg-zinc-800"
         }`}
