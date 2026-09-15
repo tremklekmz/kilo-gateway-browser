@@ -1,10 +1,16 @@
-import nextConfig from "eslint-config-next";
+import tseslint from "typescript-eslint";
 
-const eslintConfig = [
-  ...nextConfig,
+export default tseslint.config(
   {
-    ignores: ["node_modules/**"],
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "public/data/**",
+      // Harness tooling shipped with the checkout, not app source.
+      ".omp/**",
+      ".impeccable/**",
+      ".kilo/**",
+    ],
   },
-];
-
-export default eslintConfig;
+  ...tseslint.configs.recommended,
+);

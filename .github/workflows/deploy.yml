@@ -1,0 +1,109 @@
+name: Refresh models and deploy to GitHub Pages
+
+on:
+  push:
+    # `master` is this repository's default branch; keep `main` for repos that
+    # later rename it. A push made by the sync job below does not re-trigger this
+    # workflow — GITHUB_TOKEN pushes never trigger runs — so the deploy always
+    # happens in the same run, never in a follow-up one.
+    branches: [main, master]
+  # The refresh cadence. Commits are driven by changes, not by polls — the sync
+  # job commits only when the catalogue's bytes differ — so a shorter interval
+  # buys freshness without adding commits. GitHub's scheduler is best effort and
+  # deprioritizes frequent crons: 5 minutes is the floor it accepts, and below
+  # about 15 the scheduling delay eats most of the gain.
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Keeps the committed snapshot current. Cheap on purpose: no dependencies are
+  # installed, because scripts/sync-models.mjs uses only Node built-ins.
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Snapshot the gateway catalogue
+        id: sync
+        run: |
+          npm run models:sync
+          if [ -z "$(git status --porcelain -- public/data/models.json)" ]; then
+            echo "Catalogue unchanged; nothing to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/data/models.json
+          git commit -m 'chore(models): refresh gateway catalogue'
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: sync
+    # A scheduled run that changed nothing has nothing to redeploy.
+    if: needs.sync.outputs.changed == 'true' || github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      # The sync job commits, so on scheduled runs the branch tip is newer than
+      # the SHA this event carries.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check types and lint
+        run: |
+          npm run typecheck
+          npm run lint
+
+      # A project site lives under /<repo>/, so the build has to know the prefix.
+      # vite.config.ts reads this exact variable.
+      - name: Point the build at the project pages subpath
+        run: echo "BASE_PATH=/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
+
+      - run: npm run build
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+          # Without this the artifact drops dotfiles, so the deployed site would
+          # not match `dist` — `.nojekyll` in particular.
+          include-hidden-files: true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

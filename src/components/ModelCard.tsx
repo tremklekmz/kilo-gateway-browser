@@ -1,10 +1,8 @@
-"use client";
-
-import React, { useState, useRef, useEffect, useId } from "react";
-import { AIModel } from "@/lib/types";
+import { createSignal, onCleanup, onMount, Show, type JSX } from "solid-js";
+import type { AIModel } from "@/lib/types";
 import {
   calculateAveragePrice,
-  CostAssumptions,
+  type CostAssumptions,
   DEFAULT_COST_ASSUMPTIONS,
   formatContextLength,
   formatCreatedDate,
@@ -28,8 +26,15 @@ interface ModelCardProps {
   isBenchValueLeader?: boolean;
 }
 
-function CopyIcon({ copied }: { copied: boolean }) {
-  if (copied) {
+/** Unique-per-instance id for aria-describedby wiring on disclosure popovers. */
+let disclosureIdCounter = 0;
+function nextDisclosureId(): string {
+  disclosureIdCounter += 1;
+  return `disclosure-${disclosureIdCounter}`;
+}
+
+function CopyIcon(props: { copied: boolean }) {
+  if (props.copied) {
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -38,9 +43,9 @@ function CopyIcon({ copied }: { copied: boolean }) {
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
       >
         <polyline points="20 6 9 17 4 12" />
       </svg>
@@ -54,9 +59,9 @@ function CopyIcon({ copied }: { copied: boolean }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
     >
       <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
       <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
@@ -64,7 +69,7 @@ function CopyIcon({ copied }: { copied: boolean }) {
   );
 }
 
-function ProviderBadge({ provider }: { provider: string }) {
+function ProviderBadge(props: { provider: string }) {
   const colorMap: Record<string, string> = {
     openai: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     anthropic: "bg-orange-500/10 text-orange-400 border-orange-500/20",
@@ -82,21 +87,21 @@ function ProviderBadge({ provider }: { provider: string }) {
   };
 
   const colorClass =
-    colorMap[provider.toLowerCase()] ||
+    colorMap[props.provider.toLowerCase()] ||
     "bg-zinc-700/50 text-zinc-400 border-zinc-600/30";
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${colorClass} shrink-0`}
+      class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${colorClass} shrink-0`}
     >
-      {formatProviderName(provider)}
+      {formatProviderName(props.provider)}
     </span>
   );
 }
 
 function FreeBadge() {
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-neon-green/10 text-neon-green border border-neon-green/30 shrink-0">
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-neon-green/10 text-neon-green border border-neon-green/30 shrink-0">
       FREE
     </span>
   );
@@ -104,7 +109,7 @@ function FreeBadge() {
 
 function NewBadge() {
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-violet-500/15 text-violet-300 border border-violet-400/30 shrink-0">
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-violet-500/15 text-violet-300 border border-violet-400/30 shrink-0">
       NEW
     </span>
   );
@@ -113,7 +118,7 @@ function NewBadge() {
 function BenchValueTick() {
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30 shrink-0"
+      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30 shrink-0"
       title="Cheapest per attempt among the top TerminalBench scorers in the current results"
     >
       <svg
@@ -123,9 +128,9 @@ function BenchValueTick() {
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
         aria-hidden="true"
       >
         <path d="M20 6 9 17l-5-5" />
@@ -143,65 +148,59 @@ function BenchValueTick() {
  * - compact cell (compact): the TB column cell in list-view's comparison
  *   table.
  *
- * Interaction is tap/click + keyboard (Enter/Space toggle, Escape close,
- * outside-tap close) — no hover behavior, no <details> hover-trap. The
- * popover carries the score scale hint so "76.2%" is decodable ("0-100,
- * agentic terminal tasks").
+ * Interaction is tap/click + keyboard (Escape close, outside-tap close) — no
+ * hover behavior, no <details> hover-trap. The popover carries the score
+ * scale hint so "76.2%" is decodable ("0-100, agentic terminal tasks").
  */
-function TerminalBenchStat({
-  score,
-  avgAttemptCostUsd,
-  compact = false,
-}: {
+function TerminalBenchStat(props: {
   score: number;
   avgAttemptCostUsd: number | null;
   compact?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const infoId = useId();
+  const [open, setOpen] = createSignal(false);
+  let rootRef: HTMLDivElement | undefined;
+  const infoId = nextDisclosureId();
 
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
+  const onPointerDown = (e: PointerEvent) => {
+    if (rootRef && !rootRef.contains(e.target as Node)) setOpen(false);
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") setOpen(false);
+  };
+  onMount(() => {
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  });
+  onCleanup(() => {
+    document.removeEventListener("pointerdown", onPointerDown);
+    document.removeEventListener("keydown", onKeyDown);
+  });
 
-  const popover = open && (
-    <div
-      id={infoId}
-      role="tooltip"
-      className="absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-56 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs shadow-lg shadow-black/30"
-    >
-      <p className="font-semibold text-sky-400 mb-1">TerminalBench</p>
-      <p className="text-zinc-300">Overall: {formatPercent(score, 1)}</p>
-      <p className="text-zinc-400">Avg attempt cost: {formatUsd(avgAttemptCostUsd)}</p>
-      <p className="text-zinc-400 mt-1">0–100, agentic terminal tasks</p>
-    </div>
+  const popover = (
+    <Show when={open()}>
+      <div
+        id={infoId}
+        role="tooltip"
+        class="absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-56 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs shadow-lg shadow-black/30"
+      >
+        <p class="font-semibold text-sky-400 mb-1">TerminalBench</p>
+        <p class="text-zinc-300">Overall: {formatPercent(props.score, 1)}</p>
+        <p class="text-zinc-400">Avg attempt cost: {formatUsd(props.avgAttemptCostUsd)}</p>
+        <p class="text-zinc-400 mt-1">0–100, agentic terminal tasks</p>
+      </div>
+    </Show>
   );
 
-  if (compact) {
+  if (props.compact) {
     return (
-      <div ref={rootRef} className="relative inline-block">
+      <div ref={rootRef} class="relative inline-block">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-label={`TerminalBench: ${formatPercent(score, 1)}`}
-          aria-describedby={open ? infoId : undefined}
-          className="inline-flex items-center gap-1 px-1.5 max-sm:min-h-[44px] max-sm:px-3 rounded-md text-xs font-medium bg-sky-500/10 text-sky-300 border border-sky-500/25 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          aria-expanded={open()}
+          aria-label={`TerminalBench: ${formatPercent(props.score, 1)}`}
+          aria-describedby={open() ? infoId : undefined}
+          class="inline-flex items-center gap-1 px-1.5 max-sm:min-h-[44px] max-sm:px-3 rounded-md text-xs font-medium bg-sky-500/10 text-sky-300 border border-sky-500/25 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -210,15 +209,15 @@ function TerminalBenchStat({
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
             aria-hidden="true"
           >
             <polyline points="4 17 10 11 4 5" />
             <line x1="12" x2="20" y1="19" y2="19" />
           </svg>
-          {formatPercent(score, 1)}
+          {formatPercent(props.score, 1)}
         </button>
         {popover}
       </div>
@@ -226,19 +225,19 @@ function TerminalBenchStat({
   }
 
   return (
-    <div ref={rootRef} className="relative col-span-2">
+    <div ref={rootRef} class="relative col-span-2">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-describedby={open ? infoId : undefined}
-        className="w-full flex flex-col items-center justify-center px-3 py-2 max-sm:min-h-[44px] rounded-lg bg-sky-500/10 border border-sky-500/25 min-w-0 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        aria-expanded={open()}
+        aria-describedby={open() ? infoId : undefined}
+        class="w-full flex flex-col items-center justify-center px-3 py-2 max-sm:min-h-[44px] rounded-lg bg-sky-500/10 border border-sky-500/25 min-w-0 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
-        <span className="text-xs text-sky-400 font-medium uppercase tracking-wide leading-none mb-1">
+        <span class="text-xs text-sky-400 font-medium uppercase tracking-wide leading-none mb-1">
           TerminalBench
         </span>
-        <span className="text-sm font-semibold text-sky-300 leading-none">
-          {formatPercent(score, 1)}
+        <span class="text-sm font-semibold text-sky-300 leading-none">
+          {formatPercent(props.score, 1)}
         </span>
       </button>
       {popover}
@@ -247,34 +246,37 @@ function TerminalBenchStat({
 }
 
 function TrainingWarning() {
-  const [open, setOpen] = useState(false);
-  const infoId = useId();
+  const [open, setOpen] = createSignal(false);
+  const infoId = nextDisclosureId();
   return (
-    <div className="relative">
+    <div class="relative">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        aria-describedby={open ? infoId : undefined}
-        className="flex items-center gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        aria-expanded={open()}
+        aria-describedby={open() ? infoId : undefined}
+        class="flex items-center gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
         <span aria-hidden="true">!</span>
         <span>This provider may train on your prompts.</span>
       </button>
-      {open && (
-        <p id={infoId} className="mt-1 rounded-md border border-amber-500/20 bg-zinc-800 px-3 py-2 text-[11px] text-amber-200">
-          Review the provider&apos;s data-use policy before sending sensitive prompts.
+      <Show when={open()}>
+        <p
+          id={infoId}
+          class="mt-1 rounded-md border border-amber-500/20 bg-zinc-800 px-3 py-2 text-[11px] text-amber-200"
+        >
+          Review the provider's data-use policy before sending sensitive prompts.
         </p>
-      )}
+      </Show>
     </div>
   );
 }
 
-const MODALITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+const MODALITY_CONFIG: Record<string, { label: string; icon: JSX.Element; color: string }> = {
   text: {
     label: "Text",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 6.1H3" /><path d="M21 12.1H3" /><path d="M15.1 18H3" />
       </svg>
     ),
@@ -283,7 +285,7 @@ const MODALITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; co
   image: {
     label: "Image",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
         <circle cx="9" cy="9" r="2" />
         <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -294,7 +296,7 @@ const MODALITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; co
   audio: {
     label: "Audio",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M9 18V5l12-2v13" />
         <circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
       </svg>
@@ -304,7 +306,7 @@ const MODALITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; co
   video: {
     label: "Video",
     icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="m22 8-6 4 6 4V8z" /><rect width="14" height="12" x="2" y="6" rx="2" ry="2" />
       </svg>
     ),
@@ -312,9 +314,9 @@ const MODALITY_CONFIG: Record<string, { label: string; icon: React.ReactNode; co
   },
 };
 
-function ModalityBadges({ modalities }: { modalities: string[] }) {
-  if (!modalities || modalities.length === 0) return null;
-  const normalized = modalities.map((m) => m.toLowerCase().split("+")[0].trim());
+function ModalityBadges(props: { modalities: string[] }) {
+  if (!props.modalities || props.modalities.length === 0) return null;
+  const normalized = props.modalities.map((m) => m.toLowerCase().split("+")[0].trim());
   const unique = Array.from(new Set(normalized));
   // "text" is the near-universal baseline modality for a model gateway — it
   // appears on ~90% of cards and carries no discriminating signal. Suppress it
@@ -322,14 +324,13 @@ function ModalityBadges({ modalities }: { modalities: string[] }) {
   const discriminating = unique.filter((mod) => mod !== "text");
   if (discriminating.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div class="flex flex-wrap gap-1">
       {discriminating.map((mod) => {
         const cfg = MODALITY_CONFIG[mod];
         if (!cfg) return null;
         return (
           <span
-            key={mod}
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${cfg.color}`}
+            class={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${cfg.color}`}
           >
             {cfg.icon}
             {cfg.label}
@@ -340,58 +341,53 @@ function ModalityBadges({ modalities }: { modalities: string[] }) {
   );
 }
 
-function StatPill({
-  label,
-  value,
-  info,
-}: {
-  label: string;
-  value: string;
-  info?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const infoId = useId();
+function StatPill(props: { label: string; value: string; info?: string }) {
+  const [open, setOpen] = createSignal(false);
+  const infoId = nextDisclosureId();
   return (
-    <div className="relative min-w-0">
+    <div class="relative min-w-0">
       <button
         type="button"
-        onClick={() => info && setOpen((current) => !current)}
-        aria-label={info ? `${label}: ${value}. Show pricing assumptions` : `${label}: ${value}`}
-        aria-expanded={info ? open : undefined}
-        aria-describedby={info && open ? infoId : undefined}
-        className="w-full flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        onClick={() => props.info && setOpen((current) => !current)}
+        aria-label={
+          props.info ? `${props.label}: ${props.value}. Show pricing assumptions` : `${props.label}: ${props.value}`
+        }
+        aria-expanded={props.info ? open() : undefined}
+        aria-describedby={props.info && open() ? infoId : undefined}
+        class="w-full flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
-        <span className="text-xs text-zinc-400 font-medium uppercase tracking-wide leading-none mb-1">{label}</span>
-        <span className="text-sm font-semibold text-zinc-200 leading-none truncate w-full text-center">{value}</span>
+        <span class="text-xs text-zinc-400 font-medium uppercase tracking-wide leading-none mb-1">
+          {props.label}
+        </span>
+        <span class="text-sm font-semibold text-zinc-200 leading-none truncate w-full text-center">
+          {props.value}
+        </span>
       </button>
-      {info && open && (
-        <p id={infoId} className="absolute left-1/2 top-full z-20 mt-1 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-300 shadow-lg">
-          {info}
+      <Show when={props.info && open()}>
+        <p
+          id={infoId}
+          class="absolute left-1/2 top-full z-20 mt-1 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-300 shadow-lg"
+        >
+          {props.info}
         </p>
-      )}
+      </Show>
     </div>
   );
 }
 
-function ExpandableDescription({
-  text,
-  lineClamp,
-  className,
-}: {
+function ExpandableDescription(props: {
   text: string;
   lineClamp: number;
-  className?: string;
+  class?: string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [isClamped, setIsClamped] = useState(false);
-  const ref = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = createSignal(false);
+  const [isClamped, setIsClamped] = createSignal(false);
+  let ref: HTMLParagraphElement | undefined;
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
+  onMount(() => {
     const measure = () => {
-      if (expanded) return;
+      const el = ref;
+      if (!el || expanded()) return;
 
       const prevDisplay = el.style.display;
       const prevOrient = el.style.webkitBoxOrient;
@@ -405,7 +401,7 @@ function ExpandableDescription({
 
       el.style.display = "-webkit-box";
       el.style.webkitBoxOrient = "vertical";
-      el.style.webkitLineClamp = String(lineClamp);
+      el.style.webkitLineClamp = String(props.lineClamp);
       el.style.overflow = "hidden";
       const clampedHeight = el.clientHeight;
 
@@ -419,360 +415,432 @@ function ExpandableDescription({
 
     measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [text, lineClamp, expanded]);
+    if (ref) ro.observe(ref);
+    onCleanup(() => ro.disconnect());
+  });
 
   return (
     <div>
       <p
         ref={ref}
         style={
-          expanded
+          expanded()
             ? undefined
             : {
                 display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: lineClamp,
+                "-webkit-box-orient": "vertical",
+                "-webkit-line-clamp": String(props.lineClamp),
                 overflow: "hidden",
               }
         }
-        className={className}
+        class={props.class}
       >
-        {text}
+        {props.text}
       </p>
-      {isClamped && (
+      <Show when={isClamped()}>
         <button
           onClick={(e) => {
             e.stopPropagation();
             setExpanded((v) => !v);
           }}
-          aria-expanded={expanded}
-          className="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded"
+          aria-expanded={expanded()}
+          class="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded"
         >
-          {expanded ? "Show less" : "Show more"}
+          {expanded() ? "Show less" : "Show more"}
         </button>
-      )}
+      </Show>
     </div>
   );
 }
 
-export function ModelCard({
-  model,
-  view,
-  costAssumptions = DEFAULT_COST_ASSUMPTIONS,
-  isBenchValueLeader = false,
-}: ModelCardProps) {
-  const [copied, setCopied] = useState(false);
-  // Current time captured once per mount via the lazy initializer — the
-  // sanctioned place for an impure clock read; render stays pure and the
-  // value is stable for the card's lifetime ("3d ago" needs no live tick).
-  const [nowSeconds] = useState(() => Math.floor(Date.now() / 1000));
-  const provider = getProviderFromId(model.id);
-  const free = isFreeModel(model);
-  const isNew = isNewModel(model);
+export function ModelCard(props: ModelCardProps) {
+  const [copied, setCopied] = createSignal(false);
+  // Current time captured once per setup — "3d ago" needs no live tick, and a
+  // stable value keeps the card's lifetime rendering consistent.
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const provider = () => getProviderFromId(props.model.id);
+  const free = () => isFreeModel(props.model);
+  const isNew = () => isNewModel(props.model);
 
-  const promptPrice = formatPrice(model.pricing.prompt);
-  const completionPrice = formatPrice(model.pricing.completion);
-  const contextLength = formatContextLength(model.context_length);
+  const promptPrice = () => formatPrice(props.model.pricing.prompt);
+  const completionPrice = () => formatPrice(props.model.pricing.completion);
+  const contextLength = () => formatContextLength(props.model.context_length);
+
+  let copiedTimer: number | undefined;
+  onCleanup(() => {
+    if (copiedTimer !== undefined) clearTimeout(copiedTimer);
+  });
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(model.id);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(props.model.id);
     } catch {
       // fallback
       const el = document.createElement("textarea");
-      el.value = model.id;
+      el.value = props.model.id;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    if (copiedTimer !== undefined) clearTimeout(copiedTimer);
+    copiedTimer = window.setTimeout(() => setCopied(false), 2000);
   };
 
-  const createdDate = formatCreatedDate(model.created);
-  const relativeAge = formatRelativeAge(model.created, nowSeconds);
-  const ageDays = model.created > 0 ? (nowSeconds - model.created) / 86400 : -1;
-  const relativeAgeFresh = ageDays >= 0 && ageDays <= 30;
+  const createdDate = () => formatCreatedDate(props.model.created);
+  const relativeAge = () => formatRelativeAge(props.model.created, nowSeconds);
+  const ageDays = () => (props.model.created > 0 ? (nowSeconds - props.model.created) / 86400 : -1);
+  const relativeAgeFresh = () => ageDays() >= 0 && ageDays() <= 30;
   // calculateAveragePrice is scale-invariant; pass raw per-token values and
   // forward the result to formatPrice, which normalises to $/1M for display.
   // NaN/Infinity from malformed strings are clamped to 0 inside the utility.
-  const avgPrice = formatPrice(
-    calculateAveragePrice(
-      {
-        input: parseFloat(model.pricing.prompt),
-        output: parseFloat(model.pricing.completion),
-        cacheRead:
-          model.pricing.input_cache_read != null
-            ? parseFloat(model.pricing.input_cache_read)
-            : null,
-      },
-      costAssumptions,
-    ),
-  );
-  const avgAssumptionSummary = formatCostAssumptionSummary(costAssumptions);
+  const avgPrice = () =>
+    formatPrice(
+      calculateAveragePrice(
+        {
+          input: parseFloat(props.model.pricing.prompt),
+          output: parseFloat(props.model.pricing.completion),
+          cacheRead:
+            props.model.pricing.input_cache_read != null
+              ? parseFloat(props.model.pricing.input_cache_read)
+              : null,
+        },
+        props.costAssumptions ?? DEFAULT_COST_ASSUMPTIONS,
+      ),
+    );
+  const avgAssumptionSummary = () =>
+    formatCostAssumptionSummary(props.costAssumptions ?? DEFAULT_COST_ASSUMPTIONS);
 
-  if (view === "list") {
+  return (
+    <Show
+      when={props.view === "list"}
+      fallback={<ModelCardGrid {...props} free={free()} isNew={isNew()} provider={provider()} promptPrice={promptPrice()} completionPrice={completionPrice()} contextLength={contextLength()} avgPrice={avgPrice()} avgAssumptionSummary={avgAssumptionSummary()} createdDate={createdDate()} relativeAge={relativeAge()} relativeAgeFresh={relativeAgeFresh()} isBenchValueLeader={props.isBenchValueLeader ?? false} handleCopy={handleCopy} copied={copied()} />}
+    >
+      <ModelCardList {...props} free={free()} isNew={isNew()} provider={provider()} promptPrice={promptPrice()} completionPrice={completionPrice()} contextLength={contextLength()} avgPrice={avgPrice()} avgAssumptionSummary={avgAssumptionSummary()} createdDate={createdDate()} relativeAge={relativeAge()} relativeAgeFresh={relativeAgeFresh()} handleCopy={handleCopy} copied={copied()} />
+    </Show>
+  );
+}
+
+function ModelCardList(props: {
+  model: AIModel;
+  free: boolean;
+  isNew: boolean;
+  provider: string;
+  promptPrice: string;
+  completionPrice: string;
+  contextLength: string;
+  avgPrice: string;
+  avgAssumptionSummary: string;
+  createdDate: string | null;
+  relativeAge: string | null;
+  relativeAgeFresh: boolean;
+  handleCopy: () => void;
+  copied: boolean;
+}) {
+  const model = () => props.model;
+  return (
     // Comparison-table row: an 8-column grid shared with the sticky header in
-    // ModelsBrowser (same template), so Context/In/Out/Avg/TB/Age align into
-    // true columns. Mobile collapses to a stacked single column.
-    return (
-      <div className="group rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200 max-sm:p-4 sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-3">
-        {/* Model identity + badges */}
-        <div className="min-w-0 max-sm:mb-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-sm font-semibold text-zinc-100 truncate">
-              {formatDisplayName(model.name)}
-            </h3>
-            <ProviderBadge provider={provider} />
-            {free && <FreeBadge />}
-            {isNew && <NewBadge />}
-          </div>
-          {model.description && (
-            <>
-              <p className="hidden sm:block text-xs text-zinc-400 truncate leading-relaxed">
-                {model.description}
-              </p>
-              <p className="sm:hidden text-xs text-zinc-400 line-clamp-2 leading-relaxed mt-1">
-                {model.description}
-              </p>
-            </>
-          )}
-          {model.mayTrainOnYourPrompts && (
-            <div className="mt-2">
-              <TrainingWarning />
-            </div>
-          )}
+    // App (same template), so Context/In/Out/Avg/TB/Age align into true
+    // columns. Mobile collapses to a stacked single column.
+    <div class="group rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200 max-sm:p-4 sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-3">
+      {/* Model identity + badges */}
+      <div class="min-w-0 max-sm:mb-1">
+        <div class="flex items-center gap-2 mb-1">
+          <h3 class="text-sm font-semibold text-zinc-100 truncate">
+            {formatDisplayName(model().name)}
+          </h3>
+          <ProviderBadge provider={props.provider} />
+          {props.free && <FreeBadge />}
+          {props.isNew && <NewBadge />}
         </div>
-        {/* Context */}
-        <span className="hidden sm:block text-sm font-medium text-zinc-300 text-right tabular-nums whitespace-nowrap">
-          {contextLength}
-        </span>
-        {/* In */}
-        <span
-          className={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
-            free ? "text-neon-green" : "text-zinc-300"
-          }`}
-        >
-          {promptPrice}
-        </span>
-        {/* Out */}
-        <span
-          className={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
-            free ? "text-neon-green" : "text-zinc-300"
-          }`}
-        >
-          {completionPrice}
-        </span>
-        {/* Avg */}
-        <span
-          className={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
-            free ? "text-neon-green" : "text-zinc-300"
-          }`}
-        >
-          {avgPrice}
-        </span>
-        {/* TB: sparse column — em-dash when unscored, honest absence */}
-        <span className="hidden sm:flex justify-center">
-          {model.terminalBench ? (
-            <TerminalBenchStat
-              score={model.terminalBench.overallScore}
-              avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
-              compact
-            />
-          ) : (
-            <span className="text-sm text-zinc-500" aria-hidden="true">
+        <Show when={model().description}>
+          <p class="hidden sm:block text-xs text-zinc-400 truncate leading-relaxed">
+            {model().description}
+          </p>
+          <p class="sm:hidden text-xs text-zinc-400 line-clamp-2 leading-relaxed mt-1">
+            {model().description}
+          </p>
+        </Show>
+        <Show when={model().mayTrainOnYourPrompts}>
+          <div class="mt-2">
+            <TrainingWarning />
+          </div>
+        </Show>
+      </div>
+      {/* Context */}
+      <span class="hidden sm:block text-sm font-medium text-zinc-300 text-right tabular-nums whitespace-nowrap">
+        {props.contextLength}
+      </span>
+      {/* In */}
+      <span
+        class={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+          props.free ? "text-neon-green" : "text-zinc-300"
+        }`}
+      >
+        {props.promptPrice}
+      </span>
+      {/* Out */}
+      <span
+        class={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+          props.free ? "text-neon-green" : "text-zinc-300"
+        }`}
+      >
+        {props.completionPrice}
+      </span>
+      {/* Avg */}
+      <span
+        class={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+          props.free ? "text-neon-green" : "text-zinc-300"
+        }`}
+      >
+        {props.avgPrice}
+      </span>
+      {/* TB: sparse column — em-dash when unscored, honest absence */}
+      <span class="hidden sm:flex justify-center">
+        <Show
+          when={model().terminalBench}
+          fallback={
+            <span class="text-sm text-zinc-500" aria-hidden="true">
               —
             </span>
+          }
+        >
+          {(bench) => (
+            <TerminalBenchStat
+              score={bench().overallScore}
+              avgAttemptCostUsd={bench().avgAttemptCostUsd}
+              compact
+            />
           )}
-        </span>
-        {/* Age */}
-        <span className="hidden sm:block text-xs font-medium text-right whitespace-nowrap">
-          {relativeAge && (
-            <span
-              title={`Released ${createdDate}`}
-              aria-label={`Released ${createdDate}`}
-              className={isNew ? "text-violet-300" : relativeAgeFresh ? "text-zinc-300" : "text-zinc-400"}
-            >
-              {relativeAge}
-            </span>
-          )}
-        </span>
-        {/* Copy action */}
-        <span className="hidden sm:flex justify-end">
-          <button
-            onClick={handleCopy}
-            aria-live="polite"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-              copied
-                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-600"
-            }`}
+        </Show>
+      </span>
+      {/* Age */}
+      <span class="hidden sm:block text-xs font-medium text-right whitespace-nowrap">
+        <Show when={props.relativeAge}>
+          <span
+            title={`Released ${props.createdDate}`}
+            aria-label={`Released ${props.createdDate}`}
+            class={
+              props.isNew
+                ? "text-violet-300"
+                : props.relativeAgeFresh
+                  ? "text-zinc-300"
+                  : "text-zinc-400"
+            }
           >
-            <CopyIcon copied={copied} />
-            {copied ? "Copied!" : "Copy ID"}
-          </button>
-        </span>
-        {/* Mobile stack: everything desktop columns hold, card-style */}
-        <div className="sm:hidden space-y-2.5">
-          <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-zinc-400">
-            {model.terminalBench && (
+            {props.relativeAge}
+          </span>
+        </Show>
+      </span>
+      {/* Copy action */}
+      <span class="hidden sm:flex justify-end">
+        <button
+          onClick={props.handleCopy}
+          aria-live="polite"
+          class={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+            props.copied
+              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+              : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-600"
+          }`}
+        >
+          <CopyIcon copied={props.copied} />
+          {props.copied ? "Copied!" : "Copy ID"}
+        </button>
+      </span>
+      {/* Mobile stack: everything desktop columns hold, card-style */}
+      <div class="sm:hidden space-y-2.5">
+        <div class="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-zinc-400">
+          <Show when={model().terminalBench}>
+            {(bench) => (
               <TerminalBenchStat
-                score={model.terminalBench.overallScore}
-                avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
+                score={bench().overallScore}
+                avgAttemptCostUsd={bench().avgAttemptCostUsd}
                 compact
               />
             )}
-            <span className="flex items-center gap-1">
-              Context: <span className="text-zinc-300 font-medium">{contextLength}</span>
+          </Show>
+          <span class="flex items-center gap-1">
+            Context: <span class="text-zinc-300 font-medium">{props.contextLength}</span>
+          </span>
+          <span class="flex items-center gap-1">
+            In:{" "}
+            <span class={`font-medium ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
+              {props.promptPrice}
             </span>
-            <span className="flex items-center gap-1">
-              In:{" "}
-              <span className={`font-medium ${free ? "text-neon-green" : "text-zinc-300"}`}>
-                {promptPrice}
-              </span>
+          </span>
+          <span class="flex items-center gap-1">
+            Out:{" "}
+            <span class={`font-medium ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
+              {props.completionPrice}
             </span>
-            <span className="flex items-center gap-1">
-              Out:{" "}
-              <span className={`font-medium ${free ? "text-neon-green" : "text-zinc-300"}`}>
-                {completionPrice}
-              </span>
+          </span>
+          <span class="flex items-center gap-1">
+            Avg:{" "}
+            <span class={`font-medium ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
+              {props.avgPrice}
             </span>
-            <span className="flex items-center gap-1">
-              Avg:{" "}
-              <span className={`font-medium ${free ? "text-neon-green" : "text-zinc-300"}`}>
-                {avgPrice}
-              </span>
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-3 text-[11px] text-zinc-400">
-            <span>per 1M · {avgAssumptionSummary}</span>
-            {relativeAge && <span className="font-mono">{model.id}</span>}
-            {createdDate && relativeAge && (
-              <span className={isNew ? "text-violet-300" : relativeAgeFresh ? "text-zinc-300" : "text-zinc-400"}>
-                {relativeAge}
-                <span className="text-zinc-500 font-normal"> · {createdDate}</span>
-              </span>
-            )}
-          </div>
-          <button
-            onClick={handleCopy}
-            aria-live="polite"
-            className={`w-full min-h-[44px] flex items-center justify-center gap-1.5 px-4 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-              copied
-                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
-            }`}
-          >
-            <CopyIcon copied={copied} />
-            {copied ? "Copied!" : "Copy ID"}
-          </button>
+          </span>
         </div>
+        <div class="flex flex-wrap gap-3 text-[11px] text-zinc-400">
+          <span>per 1M · {props.avgAssumptionSummary}</span>
+          <Show when={props.relativeAge}>
+            <span class="font-mono">{model().id}</span>
+          </Show>
+          <Show when={props.createdDate && props.relativeAge}>
+            <span
+              class={
+                props.isNew
+                  ? "text-violet-300"
+                  : props.relativeAgeFresh
+                    ? "text-zinc-300"
+                    : "text-zinc-400"
+              }
+            >
+              {props.relativeAge}
+              <span class="text-zinc-500 font-normal"> · {props.createdDate}</span>
+            </span>
+          </Show>
+        </div>
+        <button
+          onClick={props.handleCopy}
+          aria-live="polite"
+          class={`w-full min-h-[44px] flex items-center justify-center gap-1.5 px-4 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+            props.copied
+              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+              : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+          }`}
+        >
+          <CopyIcon copied={props.copied} />
+          {props.copied ? "Copied!" : "Copy ID"}
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+function ModelCardGrid(props: {
+  model: AIModel;
+  free: boolean;
+  isNew: boolean;
+  provider: string;
+  promptPrice: string;
+  completionPrice: string;
+  contextLength: string;
+  avgPrice: string;
+  avgAssumptionSummary: string;
+  createdDate: string | null;
+  relativeAge: string | null;
+  relativeAgeFresh: boolean;
+  isBenchValueLeader: boolean;
+  handleCopy: () => void;
+  copied: boolean;
+}) {
+  const model = () => props.model;
   return (
-    <div className="group flex flex-col p-5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200 hover:shadow-lg hover:shadow-black/20">
+    <div class="group flex flex-col p-5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200 hover:shadow-lg hover:shadow-black/20">
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-zinc-100 leading-snug mb-1.5 line-clamp-2">
-            {formatDisplayName(model.name)}
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="flex-1 min-w-0">
+          <h3 class="text-sm font-semibold text-zinc-100 leading-snug mb-1.5 line-clamp-2">
+            {formatDisplayName(model().name)}
           </h3>
-          <div className="flex flex-wrap gap-1.5">
-            <ProviderBadge provider={provider} />
-            {isBenchValueLeader && <BenchValueTick />}
-            <ModalityBadges modalities={model.architecture?.input_modalities ?? []} />
+          <div class="flex flex-wrap gap-1.5">
+            <ProviderBadge provider={props.provider} />
+            <Show when={props.isBenchValueLeader}>
+              <BenchValueTick />
+            </Show>
+            <ModalityBadges modalities={model().architecture?.input_modalities ?? []} />
           </div>
         </div>
-        {(free || isNew) && (
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            {free && <FreeBadge />}
-            {isNew && <NewBadge />}
+        <Show when={props.free || props.isNew}>
+          <div class="flex flex-col items-end gap-1 shrink-0">
+            {props.free && <FreeBadge />}
+            {props.isNew && <NewBadge />}
           </div>
-        )}
+        </Show>
       </div>
       {/* Description */}
-      {model.description && (
-        <div className="mb-4 flex-1">
+      <Show when={model().description}>
+        <div class="mb-4 flex-1">
           <ExpandableDescription
-            text={model.description}
+            text={model().description}
             lineClamp={2}
-            className="text-xs text-zinc-400 leading-relaxed break-words"
+            class="text-xs text-zinc-400 leading-relaxed break-words"
           />
         </div>
-      )}
-      <div className="mt-auto">
-        {model.mayTrainOnYourPrompts && (
-          <div className="mb-3">
+      </Show>
+      <div class="mt-auto">
+        <Show when={model().mayTrainOnYourPrompts}>
+          <div class="mb-3">
             <TrainingWarning />
           </div>
-        )}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          {model.terminalBench && (
-            <TerminalBenchStat
-              score={model.terminalBench.overallScore}
-              avgAttemptCostUsd={model.terminalBench.avgAttemptCostUsd}
-            />
-          )}
-          <StatPill label="Context" value={contextLength} />
+        </Show>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <Show when={model().terminalBench}>
+            {(bench) => (
+              <TerminalBenchStat
+                score={bench().overallScore}
+                avgAttemptCostUsd={bench().avgAttemptCostUsd}
+              />
+            )}
+          </Show>
+          <StatPill label="Context" value={props.contextLength} />
           <StatPill
             label="Avg $/1M"
-            value={avgPrice}
-            info={`Average blended cost per 1M tokens. Uses ${avgAssumptionSummary}. Change it in Cost assumptions.`}
+            value={props.avgPrice}
+            info={`Average blended cost per 1M tokens. Uses ${props.avgAssumptionSummary}. Change it in Cost assumptions.`}
           />
         </div>
-        <details className="mb-3 rounded-lg border border-zinc-800 bg-zinc-950/30">
-          <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-lg">
+        <details class="mb-3 rounded-lg border border-zinc-800 bg-zinc-950/30">
+          <summary class="cursor-pointer list-none px-3 py-2 text-xs font-medium text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-lg">
             Direct token rates
           </summary>
-          <div className="grid grid-cols-2 gap-2 px-3 pb-3">
-            <StatPill label="In $/1M" value={promptPrice} />
-            <StatPill label="Out $/1M" value={completionPrice} />
+          <div class="grid grid-cols-2 gap-2 px-3 pb-3">
+            <StatPill label="In $/1M" value={props.promptPrice} />
+            <StatPill label="Out $/1M" value={props.completionPrice} />
           </div>
         </details>
-        <p className="mb-3 text-center text-[11px] leading-relaxed text-zinc-400">
-          Avg price per 1M · {avgAssumptionSummary}
+        <p class="mb-3 text-center text-[11px] leading-relaxed text-zinc-400">
+          Avg price per 1M · {props.avgAssumptionSummary}
         </p>
 
         {/* Release date is a primary recency signal; absolute date remains visible on touch. */}
-        {createdDate && relativeAge && (
+        <Show when={props.createdDate && props.relativeAge}>
           <p
-            title={`Released ${createdDate}`}
-            aria-label={`Released ${createdDate}`}
-            className={`flex items-center justify-center gap-1 text-xs font-semibold mb-2 ${
-              isNew ? "text-violet-300" : relativeAgeFresh ? "text-zinc-300" : "text-zinc-400"
+            title={`Released ${props.createdDate}`}
+            aria-label={`Released ${props.createdDate}`}
+            class={`flex items-center justify-center gap-1 text-xs font-semibold mb-2 ${
+              props.isNew
+                ? "text-violet-300"
+                : props.relativeAgeFresh
+                  ? "text-zinc-300"
+                  : "text-zinc-400"
             }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect width="18" height="18" x="3" y="4" rx="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" />
             </svg>
-            Released {relativeAge}
-            <span className="text-zinc-400 font-normal"> · {createdDate}</span>
+            Released {props.relativeAge}
+            <span class="text-zinc-400 font-normal"> · {props.createdDate}</span>
           </p>
-        )}
+        </Show>
 
         {/* Model ID + Copy */}
-        <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/40 border border-zinc-700/50">
-          <code className="flex-1 text-[11px] text-zinc-300 font-mono truncate">
-            {model.id}
-          </code>
+        <div class="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/40 border border-zinc-700/50">
+          <code class="flex-1 text-[11px] text-zinc-300 font-mono truncate">{model().id}</code>
           <button
-            onClick={handleCopy}
+            onClick={props.handleCopy}
             title="Copy model ID"
             aria-live="polite"
-            className={`shrink-0 flex items-center gap-1 px-2 py-1 max-sm:px-3 max-sm:min-h-[44px] max-sm:min-w-[44px] max-sm:justify-center rounded-md text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-              copied
-                ? "bg-emerald-500/10 text-emerald-400"
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
+            class={`shrink-0 flex items-center gap-1 px-2 py-1 max-sm:px-3 max-sm:min-h-[44px] max-sm:min-w-[44px] max-sm:justify-center rounded-md text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+              props.copied ? "bg-emerald-500/10 text-emerald-400" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
             }`}
           >
-            <CopyIcon copied={copied} />
-            <span className={copied ? "inline" : "hidden sm:inline"}>{copied ? "Copied!" : "Copy"}</span>
+            <CopyIcon copied={props.copied} />
+            <span class={props.copied ? "inline" : "hidden sm:inline"}>
+              {props.copied ? "Copied!" : "Copy"}
+            </span>
           </button>
         </div>
       </div>
