@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { createSignal, onCleanup } from "solid-js";
 
 function formatFreshness(updatedAtMs: number, nowMs: number): string {
   const delta = Math.max(0, nowMs - updatedAtMs);
@@ -19,27 +17,18 @@ function formatFreshness(updatedAtMs: number, nowMs: number): string {
  * Render it OUTSIDE any aria-live region — the tick would otherwise re-announce
  * on a screen reader every 30s.
  */
-export function FreshnessStamp({
-  updatedAt,
-  className,
-}: {
-  updatedAt: number;
-  className?: string;
-}) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
+export function FreshnessStamp(props: { updatedAt: number; class?: string }) {
+  const [now, setNow] = createSignal(Date.now());
+  const timer = setInterval(() => setNow(Date.now()), 30_000);
+  onCleanup(() => clearInterval(timer));
 
   return (
     <time
-      dateTime={new Date(updatedAt).toISOString()}
-      title={`Data fetched ${new Date(updatedAt).toLocaleString()}`}
-      className={className}
+      datetime={new Date(props.updatedAt).toISOString()}
+      title={`Data fetched ${new Date(props.updatedAt).toLocaleString()}`}
+      class={props.class}
     >
-      Updated {formatFreshness(updatedAt, now)}
+      Updated {formatFreshness(props.updatedAt, now())}
     </time>
   );
 }

@@ -16,7 +16,7 @@ A fast, searchable overview of every model exposed by the Kilo Gateway API (`htt
 Unified recency-and-comparison view: one searchable, filterable surface over all gateway providers where the newest releases lead and real $/1M-token pricing math (input/output/cache-weighted, assumptions adjustable and shareable via URL) and TerminalBench results sit beside each option — something reading provider docs directly cannot give.
 
 ## Operating Context
-Used in a browser during development work, often alongside an editor/terminal. Model data is live from the gateway API, server-fetched with 60s revalidation and a client-side fallback. Filter/assumption state lives in the URL, so a filtered view is shareable. Cost assumptions persist in localStorage.
+Used in a browser during development work, often alongside an editor/terminal. Model data comes from a committed catalogue snapshot (refreshed from the gateway API every 15 minutes by CI — the API sends no CORS headers, so the SPA cannot call it directly). Filter/assumption state lives in the URL, so a filtered view is shareable. Cost assumptions persist in localStorage.
 
 ## Capabilities and Constraints
 - Default view is newest-first: models sort by release date (API `created` timestamp) unless another sort is chosen; models without a real date (routers/placeholders, `created === 0`) sink to the end.
