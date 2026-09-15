@@ -545,6 +545,29 @@ export function SearchFilter(props: SearchFilterProps) {
   );
   const assumptionsOpen = () =>
     assumptionsOverride() ?? (expanded() && activeAssumptionsActive());
+  // Benchmark gates disclosure — same override semantics as the assumptions
+  // details: an explicit user toggle wins (`benchOverride`), otherwise the
+  // gate opens while the panel is expanded and a bench filter is active.
+  // The override resets on each panel expansion (see assumptionsOverride).
+  const [benchOverride, setBenchOverride] = createSignal<boolean | null>(null);
+  createEffect(
+    () => expanded(),
+    (isExpanded) => {
+      if (isExpanded) setBenchOverride(null);
+    },
+  );
+  const benchOpen = () =>
+    benchOverride() ?? (expanded() && !!(app.filters().benchMin || app.filters().benchMaxCost));
+
+  // Terse state mirror for the gate header, same voice as the assumptions
+  // summary ("10% output, 77.8% cache hit").
+  const benchGateSummary = createMemo(() => {
+    const f = app.filters();
+    const parts: string[] = [];
+    if (f.benchMin) parts.push(`min ${f.benchMin}`);
+    if (f.benchMaxCost) parts.push(`max $${f.benchMaxCost}`);
+    return parts.length ? parts.join(" · ") : "Not set";
+  });
 
   const normalizedCostAssumptions = () => normalizeCostAssumptions(app.filters().costAssumptions);
   const activeAssumptionsActive = () => {
@@ -596,163 +619,93 @@ export function SearchFilter(props: SearchFilterProps) {
   // per-instance control ids take a suffix; `""` keeps the desktop DOM
   // identical to previous releases.
   const renderFiltersPanel = (m: string): JSX.Element => (
-    <>
-      {/* Quick filters */}
-      <div class="flex flex-col gap-2 md:w-48 md:flex-none">
-        <label class="block text-xs font-semibold uppercase tracking-wide text-zinc-400">
-          Quick filters
-        </label>
-        <button
-          onClick={() => app.updateFilters({ freeOnly: !app.filters().freeOnly })}
-          aria-pressed={app.filters().freeOnly ? "true" : "false"}
-          class={`flex items-center gap-2 px-3 py-2.5 max-sm:py-3 rounded-xl text-sm font-medium border transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
-            app.filters().freeOnly
-              ? "bg-neon-green/10 text-neon-green border-neon-green/30"
-              : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
-          }`}
-        >
-          <span
-            class={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-colors ${
-              app.filters().freeOnly ? "border-neon-green bg-neon-green/20" : "border-zinc-600"
-            }`}
-          >
-            <Show when={app.filters().freeOnly}>
-              <span class="w-1.5 h-1.5 rounded-full bg-neon-green block" />
-            </Show>
-          </span>
-          Free only
-        </button>
-      </div>
-
-      {/* Avg price range */}
-      <div class="flex-1 min-w-[260px]">
-        <label class="block text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-          Average cost ($/1M tokens)
-        </label>
-        <p class="mb-2 text-xs text-zinc-300">
-          Blended input/output estimate using{" "}
-          {formatCostAssumptionSummary(normalizedCostAssumptions())}.
-        </p>
-        <div class="flex items-center gap-2">
-          <div class="relative flex-1">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
+    <div class="mf-panel">
+      {/* Lane 1 — cost (dominant task) + quick filters */}
+      <div class="mf-lane">
+        <div class="flex-1 min-w-0">
+          <label class="mf-fl" for={`avg-min${m}`}>
+            Average cost ($/1M tokens)
+          </label>
+          <p class="mf-cap">
+            Blended input/output estimate using{" "}
+            {formatCostAssumptionSummary(normalizedCostAssumptions())}.
+          </p>
+          <div class="mf-fx">
+            <span class="mf-cur" aria-hidden="true">
               $
             </span>
             <input
+              id={`avg-min${m}`}
               type="number"
               inputmode="decimal"
               min="0"
               step="0.01"
               placeholder="Min"
+              aria-label="Minimum average cost"
               value={app.filters().priceMin}
               onInput={(e) => app.updateFilters({ priceMin: e.currentTarget.value })}
-              class="w-full pl-7 pr-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
             />
-          </div>
-          <span class="text-zinc-400 text-sm select-none">–</span>
-          <div class="relative flex-1">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
+            <span class="mf-sep" aria-hidden="true"></span>
+            <span class="mf-cur" aria-hidden="true">
               $
             </span>
             <input
+              id={`avg-max${m}`}
               type="number"
               inputmode="decimal"
               min="0"
               step="0.01"
               placeholder="Max"
+              aria-label="Maximum average cost"
               value={app.filters().priceMax}
               onInput={(e) => app.updateFilters({ priceMax: e.currentTarget.value })}
-              class="w-full pl-7 pr-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
             />
           </div>
+          <Show when={priceRangeInvalid()}>
+            <p class="mt-1.5 text-xs text-red-400">
+              Min price is greater than max — no models will match.
+            </p>
+          </Show>
+          <Show
+            when={app.filters().freeOnly && (app.filters().priceMin !== "" || app.filters().priceMax !== "")}
+          >
+            <p class="mt-1.5 text-xs text-zinc-400">
+              Free models have no published prices — a price range may exclude them.
+            </p>
+          </Show>
         </div>
-        <Show when={priceRangeInvalid()}>
-          <p class="mt-1.5 text-xs text-red-400">
-            Min price is greater than max — no models will match.
-          </p>
-        </Show>
-        <Show when={app.filters().freeOnly && (app.filters().priceMin !== "" || app.filters().priceMax !== "")}>
-          <p class="mt-1.5 text-xs text-zinc-400">
-            Free models have no published prices — a price range may exclude them.
-          </p>
-        </Show>
-      </div>
-
-      {/* Min benchmark result */}
-      <div class="flex-1 min-w-[200px]">
-        <label
-          for={`bench-min${m}`}
-          class="block text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2"
-        >
-          Min benchmark result{" "}
-          <span class="text-zinc-400 font-normal normal-case tracking-normal">(0–1)</span>
-        </label>
-        <input
-          id={`bench-min${m}`}
-          type="number"
-          inputmode="decimal"
-          min="0"
-          max="1"
-          step="0.01"
-          placeholder="e.g. 0.5"
-          value={app.filters().benchMin}
-          onInput={(e) => app.updateFilters({ benchMin: e.currentTarget.value })}
-          class="w-full px-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
-        />
-        <Show when={benchRangeInvalid()}>
-          <p class="mt-1.5 text-xs text-red-400">Benchmark result must be between 0 and 1.</p>
-        </Show>
-      </div>
-
-      {/* Max benchmark cost */}
-      <div class="flex-1 min-w-[200px]">
-        <label
-          for={`bench-max-cost${m}`}
-          class="block text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2"
-        >
-          Max benchmark cost{" "}
-          <span class="text-zinc-400 font-normal normal-case tracking-normal">(USD / attempt)</span>
-        </label>
-        <div class="relative">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
-            $
-          </span>
-          <input
-            id={`bench-max-cost${m}`}
-            type="number"
-            inputmode="decimal"
-            min="0"
-            step="0.01"
-            placeholder="No max"
-            value={app.filters().benchMaxCost}
-            onInput={(e) => app.updateFilters({ benchMaxCost: e.currentTarget.value })}
-            class="w-full pl-7 pr-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
-          />
+        <div class="mf-lane-fixed w-56 flex-none">
+          <span class="mf-fl">Quick filters</span>
+          <button
+            type="button"
+            onClick={() => app.updateFilters({ freeOnly: !app.filters().freeOnly })}
+            aria-pressed={app.filters().freeOnly ? "true" : "false"}
+            class="mf-fb mf-focus"
+          >
+            <span class="mf-dot" aria-hidden="true"></span>
+            Free only
+          </button>
         </div>
       </div>
 
-      {/* Created date range */}
-      <div class="flex-1 min-w-[260px]">
-        <label class="block text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
+      {/* Lane 2 — freshness */}
+      <div class="mf-lane-date max-w-[460px]">
+        <span class="mf-fl" id={`created-h${m}`}>
           Created date
-        </label>
-        <div class="flex items-center gap-2">
+        </span>
+        <div class="mf-fx" role="group" aria-labelledby={`created-h${m}`}>
           <input
             type="date"
             aria-label="Created from"
             value={app.filters().dateFrom}
             onInput={(e) => app.updateFilters({ dateFrom: e.currentTarget.value })}
-            style={{ "color-scheme": "dark" }}
-            class="flex-1 min-w-0 px-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
           />
-          <span class="text-zinc-400 text-sm select-none">–</span>
+          <span class="mf-sep" aria-hidden="true"></span>
           <input
             type="date"
             aria-label="Created to"
             value={app.filters().dateTo}
             onInput={(e) => app.updateFilters({ dateTo: e.currentTarget.value })}
-            style={{ "color-scheme": "dark" }}
-            class="flex-1 min-w-0 px-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
           />
         </div>
         <Show when={dateRangeInvalid()}>
@@ -762,16 +715,90 @@ export function SearchFilter(props: SearchFilterProps) {
         </Show>
       </div>
 
-      {/* Cost assumptions — expert controls, progressively disclosed */}
+      {/* Lane 3 — benchmark gates behind a disclosure (sparse coverage) */}
+      <div class="mf-dz">
+        <button
+          type="button"
+          onClick={() => setBenchOverride(!benchOpen())}
+          aria-expanded={benchOpen() ? "true" : "false"}
+          aria-controls={`bench-gate-body${m}`}
+          class="mf-sum mf-focus w-full"
+          data-panel-bench-toggle
+        >
+          <span class="flex items-center gap-2">
+            <svg
+              class="mf-gate-chev"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+            Benchmark gates
+          </span>
+          <span class="text-xs font-normal text-zinc-400">{benchGateSummary()}</span>
+        </button>
+        <div id={`bench-gate-body${m}`} class="mf-gate-body">
+          <div class="min-w-0">
+            <label class="mf-sub" for={`bench-min${m}`}>
+              Min result (0–1)
+            </label>
+            <input
+              id={`bench-min${m}`}
+              type="number"
+              inputmode="decimal"
+              min="0"
+              max="1"
+              step="0.01"
+              placeholder="e.g. 0.5"
+              class="mf-fi"
+              value={app.filters().benchMin}
+              onInput={(e) => app.updateFilters({ benchMin: e.currentTarget.value })}
+            />
+            <Show when={benchRangeInvalid()}>
+              <p class="mt-1.5 text-xs text-red-400">Benchmark result must be between 0 and 1.</p>
+            </Show>
+          </div>
+          <div class="min-w-0">
+            <label class="mf-sub" for={`bench-max-cost${m}`}>
+              Max cost (USD / attempt)
+            </label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
+                $
+              </span>
+              <input
+                id={`bench-max-cost${m}`}
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="No max"
+                class="mf-fi mf-pl-currency"
+                value={app.filters().benchMaxCost}
+                onInput={(e) => app.updateFilters({ benchMaxCost: e.currentTarget.value })}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lane 4 — cost assumptions, progressively disclosed */}
       <details
         open={assumptionsOpen()}
         onToggle={(e) => {
           const open = e.currentTarget.open;
           if (open !== assumptionsOpen()) setAssumptionsOverride(open);
         }}
-        class="w-full rounded-xl border border-zinc-800 bg-zinc-950/40"
+        class="mf-dz"
       >
-        <summary class="flex items-center justify-between gap-3 cursor-pointer select-none list-none px-3 py-2.5 max-sm:py-3 text-sm text-zinc-200 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-xl">
+        <summary class="mf-sum mf-focus">
           <span class="flex items-center gap-2">
             <ChevronDownIcon open={assumptionsOpen()} />
             Cost assumptions
@@ -780,54 +807,38 @@ export function SearchFilter(props: SearchFilterProps) {
             {formatCostAssumptionSummary(normalizedCostAssumptions())}
           </span>
         </summary>
-        <div class="px-3 pb-3">
-          <div class="flex items-start justify-between gap-3 mb-3">
-            <p class="text-xs text-zinc-400 leading-relaxed">
-              Avg, price sorting, and avg price filters use these values.
-            </p>
-            <Show when={activeAssumptionsActive()}>
-              <button
-                type="button"
-                onClick={() => app.setCostAssumptions(DEFAULT_COST_ASSUMPTIONS)}
-                class="shrink-0 text-xs text-zinc-400 hover:text-zinc-300 transition-colors max-sm:min-h-11"
-              >
-                Reset assumptions
-              </button>
-            </Show>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="block">
-              <span class="block text-xs text-zinc-400 mb-1">Output token share (%)</span>
-              <input
-                id={`avg-output-share${m}`}
-                type="number"
-                inputmode="decimal"
-                min="0"
-                max="100"
-                step="0.1"
-                value={formatCostAssumptionInputValue(normalizedCostAssumptions().outputTokenShare)}
-                onInput={(e) => updateOutputShare(e.currentTarget.value)}
-                class="w-full px-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
-              />
-            </label>
-            <label class="block">
-              <span class="block text-xs text-zinc-400 mb-1">Input cache hit rate (%)</span>
-              <input
-                id={`avg-cache-hit-rate${m}`}
-                type="number"
-                inputmode="decimal"
-                min="0"
-                max="100"
-                step="0.1"
-                value={formatCostAssumptionInputValue(normalizedCostAssumptions().inputCacheHitRate)}
-                onInput={(e) => updateCacheHitRate(e.currentTarget.value)}
-                class="w-full px-3 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
-              />
-            </label>
-          </div>
+        <div class="mf-asmp">
+          <label class="block">
+            <span class="mf-sub">Output token share (%)</span>
+            <input
+              id={`avg-output-share${m}`}
+              type="number"
+              inputmode="decimal"
+              min="0"
+              max="100"
+              step="0.1"
+              class="mf-fi"
+              value={formatCostAssumptionInputValue(normalizedCostAssumptions().outputTokenShare)}
+              onInput={(e) => updateOutputShare(e.currentTarget.value)}
+            />
+          </label>
+          <label class="block">
+            <span class="mf-sub">Input cache hit rate (%)</span>
+            <input
+              id={`avg-cache-hit-rate${m}`}
+              type="number"
+              inputmode="decimal"
+              min="0"
+              max="100"
+              step="0.1"
+              class="mf-fi"
+              value={formatCostAssumptionInputValue(normalizedCostAssumptions().inputCacheHitRate)}
+              onInput={(e) => updateCacheHitRate(e.currentTarget.value)}
+            />
+          </label>
         </div>
       </details>
-    </>
+    </div>
   );
 
   return (
@@ -1012,7 +1023,8 @@ export function SearchFilter(props: SearchFilterProps) {
             <Show when={expanded()}>
               <div
                 id="more-filters-panel-m"
-                class="flex flex-col md:flex-row gap-3 flex-wrap p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl"
+                class="max-sm:block"
+                data-bench-open={benchOpen() ? "" : undefined}
               >
                 {renderFiltersPanel("-m")}
               </div>
@@ -1050,11 +1062,14 @@ export function SearchFilter(props: SearchFilterProps) {
       </Show>
 
       {/* Collapsible "More filters" panel — desktop (sm+). Below sm the same
-          content renders inside the mobile filters sheet instead. */}
+          content renders inside the mobile filters sheet instead. The panel
+          carries the active-bench state so the gate disclosure CSS can react
+          without a second checkbox-style input. */}
       <Show when={expanded()}>
         <div
           id="more-filters-panel"
-          class="max-sm:hidden flex flex-col md:flex-row gap-3 flex-wrap p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl"
+          class="max-sm:hidden"
+          data-bench-open={benchOpen() ? "" : undefined}
         >
           {renderFiltersPanel("")}
         </div>
