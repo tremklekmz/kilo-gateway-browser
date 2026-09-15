@@ -99,3 +99,252 @@ code,
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ─── "More filters" panel (accepted live variant: task lanes) ───
+   Scope: .mf-panel (desktop panel + mobile sheet interior). Mobile
+   collapses the top lane and relaxes the date lane's fixed width. */
+.mf-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.mf-panel .mf-lane {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.mf-panel .mf-gate-body {
+  display: none;
+}
+
+[data-bench-open] .mf-panel .mf-gate-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+
+.mf-panel .mf-gate-chev {
+  transition: transform 200ms;
+}
+
+[data-bench-open] .mf-panel .mf-gate-chev {
+  transform: rotate(180deg);
+}
+
+.mf-panel .mf-asmp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.mf-panel .mf-fl {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: #a1a1aa; /* zinc-400 */
+}
+
+.mf-panel .mf-sub {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px; /* 11px functional-text floor */
+  line-height: 1rem;
+  color: #a1a1aa; /* zinc-400 */
+}
+
+.mf-panel .mf-cap {
+  margin: 2px 0 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: #d4d4d8; /* zinc-300 */
+}
+
+.mf-panel .mf-fi {
+  width: 100%;
+  background: #18181b; /* zinc-900 */
+  border: 1px solid #3f3f46; /* zinc-700 */
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #e4e4e7; /* zinc-200 */
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.mf-panel .mf-fi::placeholder {
+  color: #a1a1aa; /* zinc-400 */
+}
+
+.mf-panel .mf-fi:focus {
+  border-color: #8b5cf6; /* violet-500 */
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3);
+}
+
+.mf-panel .mf-fb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #3f3f46; /* zinc-700 */
+  background: #18181b; /* zinc-900 */
+  color: #a1a1aa; /* zinc-400 */
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 200ms, color 200ms, background-color 200ms;
+}
+
+.mf-panel .mf-fb:hover {
+  border-color: #71717a; /* zinc-500 */
+  color: #e4e4e7; /* zinc-200 */
+}
+
+.mf-panel .mf-fb[aria-pressed="true"] {
+  border-color: rgba(57, 255, 20, 0.3); /* neon-green/30 */
+  background: rgba(57, 255, 20, 0.1); /* neon-green/10 */
+  color: #39ff14; /* neon-green */
+}
+
+.mf-panel .mf-fb .mf-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid #52525b; /* zinc-600 */
+}
+
+.mf-panel .mf-fb[aria-pressed="true"] .mf-dot {
+  border-color: #39ff14; /* neon-green */
+  background: rgba(57, 255, 20, 0.2); /* neon-green/20 */
+}
+
+.mf-panel .mf-fx {
+  display: flex;
+  align-items: stretch;
+  background: #18181b; /* zinc-900 */
+  border: 1px solid #3f3f46; /* zinc-700 */
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.mf-panel .mf-fx:focus-within {
+  border-color: #8b5cf6; /* violet-500 */
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3);
+}
+
+.mf-panel .mf-fx input {
+  flex: 1 1 0;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  padding: 10px 8px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #e4e4e7; /* zinc-200 */
+  outline: none;
+  color-scheme: dark;
+}
+
+.mf-panel .mf-fx input::placeholder {
+  color: #a1a1aa; /* zinc-400 */
+}
+
+.mf-panel .mf-fx .mf-cur {
+  align-self: center;
+  padding-left: 12px;
+  color: #a1a1aa; /* zinc-400 */
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.mf-panel .mf-fx .mf-sep {
+  flex: none;
+  width: 1px;
+  background: #3f3f46; /* zinc-700 */
+}
+
+.mf-panel .mf-dz {
+  border-radius: 12px;
+  border: 1px solid #27272a; /* zinc-800 */
+  background: rgba(9, 9, 11, 0.4); /* zinc-950/40 */
+}
+
+.mf-panel .mf-sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #e4e4e7; /* zinc-200 */
+  cursor: pointer;
+  list-style: none;
+}
+
+.mf-panel .mf-sum::-webkit-details-marker {
+  display: none;
+}
+
+.mf-panel .mf-focus:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #a78bfa; /* violet-400 */
+}
+
+.mf-panel .mf-fi.mf-focus:focus-visible,
+.mf-panel .mf-fx .mf-focus:focus-visible {
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.3), 0 0 0 2px #a78bfa;
+}
+
+@media (max-width: 639.98px) {
+  .mf-panel .mf-lane {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mf-panel .mf-lane > .mf-lane-fixed {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .mf-panel .mf-lane-date {
+    max-width: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-panel .mf-gate-chev {
+    transition: none;
+  }
+}
+
+/* Currency-left padding for inputs that sit inside a .relative wrapper with
+   an absolutely positioned $ prefix (benchmark max-cost field). */
+.mf-pl-currency {
+  padding-left: 28px;
+}
+
+/* Fused range row on narrow containers: wrap instead of crushing the pair. */
+@media (max-width: 639.98px) {
+  .mf-panel .mf-fx {
+    flex-wrap: wrap;
+  }
+  .mf-panel .mf-fx .mf-sep {
+    display: none;
+  }
+}
