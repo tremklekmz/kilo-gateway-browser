@@ -160,7 +160,7 @@ function ProviderCombobox(props: {
         aria-haspopup="listbox"
         aria-expanded={open() ? "true" : "false"}
         aria-controls={open() ? "provider-listbox" : undefined}
-        class={`relative w-full flex items-center justify-between gap-2 pl-3 pr-8 py-2.5 max-sm:py-3 border rounded-xl text-sm transition-all duration-200 cursor-pointer focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 focus-visible:ring-2 focus-visible:ring-violet-400 ${
+        class={`relative w-full flex items-center justify-between gap-2 pl-3 pr-8 py-2.5 max-sm:py-3 border rounded-xl text-body transition-all duration-200 cursor-pointer focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 focus-visible:ring-2 focus-visible:ring-violet-400 ${
           selected().length > 0
             ? "bg-zinc-900 text-violet-200 border-violet-500/40"
             : "bg-zinc-900 text-zinc-200 border-zinc-700"
@@ -204,7 +204,7 @@ function ProviderCombobox(props: {
                 setQuery(e.currentTarget.value);
                 setActiveIndex(0);
               }}
-              class="w-full px-3 py-2 max-sm:py-3 bg-zinc-950 border border-zinc-700 rounded-lg text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
+              class="w-full px-3 py-2 max-sm:py-3 bg-zinc-950 border border-zinc-700 rounded-lg text-body text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30"
             />
           </div>
 
@@ -219,7 +219,7 @@ function ProviderCombobox(props: {
             <Show
               when={filtered().length > 0}
               fallback={
-                <li class="px-3 py-2 text-sm text-zinc-400" aria-live="polite">
+                <li class="px-3 py-2 text-body text-zinc-400" aria-live="polite">
                   No providers match &lsquo;{query().trim()}&rsquo;
                 </li>
               }
@@ -233,7 +233,7 @@ function ProviderCombobox(props: {
                       role="option"
                       aria-selected={isSelected() ? "true" : "false"}
                       onClick={() => toggleProvider(p)}
-                      class={`flex items-center gap-2 px-3 py-2 max-sm:py-3 rounded-lg text-sm cursor-pointer transition-colors ${
+                      class={`flex items-center gap-2 px-3 py-2 max-sm:py-3 rounded-lg text-body cursor-pointer transition-colors ${
                         index() === activeIndex()
                           ? "bg-zinc-800 text-zinc-200"
                           : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
@@ -272,14 +272,14 @@ function ProviderCombobox(props: {
             <button
               type="button"
               onClick={() => commit([])}
-              class="px-2 py-1 text-xs max-sm:min-h-11 max-sm:text-sm rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+              class="px-2 py-1 text-caption max-sm:min-h-11 max-sm:text-body rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
             >
               Clear
             </button>
             <button
               type="button"
               onClick={close}
-              class="px-2 py-1 text-xs max-sm:min-h-11 max-sm:text-sm rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+              class="px-2 py-1 text-caption max-sm:min-h-11 max-sm:text-body rounded-lg border border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
             >
               Done
             </button>
@@ -424,7 +424,7 @@ function SortSelect(props: {
         id={props.selectId}
         value={props.value}
         onChange={(e) => props.onChange(e.currentTarget.value as SortBy)}
-        class="w-full appearance-none pl-3 pr-8 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 focus-visible:ring-2 focus-visible:ring-violet-400 transition-all duration-200 cursor-pointer"
+        class="w-full appearance-none pl-3 pr-8 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-body text-zinc-200 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 focus-visible:ring-2 focus-visible:ring-violet-400 transition-all duration-200 cursor-pointer"
       >
         <option value="relevance" disabled hidden>
           Sorted by relevance
@@ -618,20 +618,48 @@ export function SearchFilter(props: SearchFilterProps) {
   // Panel content is rendered twice (desktop inline panel + mobile sheet), so
   // per-instance control ids take a suffix; `""` keeps the desktop DOM
   // identical to previous releases.
+  // Shared class recipes for the panel — inline Tailwind literals per repo
+  // convention (AGENTS.md: no parallel styling channel). The panel renders
+  // twice (desktop inline + mobile sheet), so the long strings live in consts
+  // instead of being duplicated per element.
+  const MF_LABEL =
+    "block mb-2 text-caption font-medium uppercase tracking-wide text-zinc-400";
+  // 11px = functional-text floor (DESIGN.md); sub-labels sit one step tighter
+  // than MF_LABEL because they hug their inputs inside the disclosures.
+  const MF_SUB = "block mb-1 text-micro text-zinc-400";
+  // Disclosure header row, shared by the bench gate button and the assumptions
+  // <summary> (Safari needs the ::-webkit-details-marker reset in index.css).
+  const MF_SUMMARY =
+    "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-body font-medium text-zinc-200 cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400";
+  // Standalone field. Date/number pickers get the dark scheme from
+  // `html { color-scheme: dark }`; violet focus is the interactivity accent.
+  const MF_INPUT =
+    "w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-body text-zinc-200 placeholder:text-zinc-400 outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200";
+  // Input fused into a row: the row owns the well chrome, so the input is
+  // bare (no border/background/radius) and stretches between its affixes.
+  const MF_FUSED_INPUT =
+    "min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 text-body text-zinc-200 placeholder:text-zinc-400 outline-none";
+  // Fused row: two inputs sharing one zinc well; the 1px separator drops out
+  // on mobile where the row wraps instead of crushing the pair.
+  const MF_FUSED_ROW =
+    "flex items-stretch max-sm:flex-wrap rounded-xl border border-zinc-700 bg-zinc-900 overflow-hidden transition-all duration-200 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500/30";
+  // Disclosure container (bench gate + cost assumptions).
+  const MF_DZ = "rounded-xl border border-zinc-800 bg-zinc-950/40";
+
   const renderFiltersPanel = (m: string): JSX.Element => (
-    <div class="mf-panel">
+    <div class="group flex flex-col gap-4 p-4" data-bench-open={benchOpen() ? "" : undefined}>
       {/* Lane 1 — cost (dominant task) + quick filters */}
-      <div class="mf-lane">
+      <div class="flex items-end gap-3 max-sm:flex-col max-sm:items-stretch">
         <div class="flex-1 min-w-0">
-          <label class="mf-fl" for={`avg-min${m}`}>
+          <label class={MF_LABEL} for={`avg-min${m}`}>
             Average cost ($/1M tokens)
           </label>
-          <p class="mf-cap">
+          <p class="mt-0.5 mb-2 text-caption text-zinc-300">
             Blended input/output estimate using{" "}
             {formatCostAssumptionSummary(normalizedCostAssumptions())}.
           </p>
-          <div class="mf-fx">
-            <span class="mf-cur" aria-hidden="true">
+          <div class={MF_FUSED_ROW}>
+            <span class="self-center pl-3 text-body text-zinc-400 pointer-events-none" aria-hidden="true">
               $
             </span>
             <input
@@ -642,11 +670,12 @@ export function SearchFilter(props: SearchFilterProps) {
               step="0.01"
               placeholder="Min"
               aria-label="Minimum average cost"
+              class={MF_FUSED_INPUT}
               value={app.filters().priceMin}
               onInput={(e) => app.updateFilters({ priceMin: e.currentTarget.value })}
             />
-            <span class="mf-sep" aria-hidden="true"></span>
-            <span class="mf-cur" aria-hidden="true">
+            <span class="w-px shrink-0 bg-zinc-700 max-sm:hidden" aria-hidden="true"></span>
+            <span class="self-center pl-3 text-body text-zinc-400 pointer-events-none" aria-hidden="true">
               $
             </span>
             <input
@@ -657,96 +686,100 @@ export function SearchFilter(props: SearchFilterProps) {
               step="0.01"
               placeholder="Max"
               aria-label="Maximum average cost"
+              class={MF_FUSED_INPUT}
               value={app.filters().priceMax}
               onInput={(e) => app.updateFilters({ priceMax: e.currentTarget.value })}
             />
           </div>
           <Show when={priceRangeInvalid()}>
-            <p class="mt-1.5 text-xs text-red-400">
+            <p class="mt-1.5 text-caption text-red-400">
               Min price is greater than max — no models will match.
             </p>
           </Show>
           <Show
             when={app.filters().freeOnly && (app.filters().priceMin !== "" || app.filters().priceMax !== "")}
           >
-            <p class="mt-1.5 text-xs text-zinc-400">
+            <p class="mt-1.5 text-caption text-zinc-400">
               Free models have no published prices — a price range may exclude them.
             </p>
           </Show>
         </div>
-        <div class="mf-lane-fixed w-56 flex-none">
-          <span class="mf-fl">Quick filters</span>
+        <div class="w-56 flex-none max-sm:w-full">
+          <span class={MF_LABEL}>Quick filters</span>
           <button
             type="button"
             onClick={() => app.updateFilters({ freeOnly: !app.filters().freeOnly })}
             aria-pressed={app.filters().freeOnly ? "true" : "false"}
-            class="mf-fb mf-focus"
+            class={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-body font-medium cursor-pointer transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+              app.filters().freeOnly
+                ? "border-neon-green/30 bg-neon-green/10 text-neon-green"
+                : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+            }`}
           >
-            <span class="mf-dot" aria-hidden="true"></span>
+            <span
+              class={`h-3.5 w-3.5 shrink-0 rounded-full border-2 ${
+                app.filters().freeOnly ? "border-neon-green bg-neon-green/20" : "border-zinc-600"
+              }`}
+              aria-hidden="true"
+            ></span>
             Free only
           </button>
         </div>
       </div>
 
       {/* Lane 2 — freshness */}
-      <div class="mf-lane-date max-w-[460px]">
-        <span class="mf-fl" id={`created-h${m}`}>
+      <div class="max-w-[460px] max-sm:max-w-none">
+        <span class={MF_LABEL} id={`created-h${m}`}>
           Created date
         </span>
-        <div class="mf-fx" role="group" aria-labelledby={`created-h${m}`}>
+        <div class={MF_FUSED_ROW} role="group" aria-labelledby={`created-h${m}`}>
           <input
             type="date"
             aria-label="Created from"
+            class={MF_FUSED_INPUT}
             value={app.filters().dateFrom}
             onInput={(e) => app.updateFilters({ dateFrom: e.currentTarget.value })}
           />
-          <span class="mf-sep" aria-hidden="true"></span>
+          <span class="w-px shrink-0 bg-zinc-700 max-sm:hidden" aria-hidden="true"></span>
           <input
             type="date"
             aria-label="Created to"
+            class={MF_FUSED_INPUT}
             value={app.filters().dateTo}
             onInput={(e) => app.updateFilters({ dateTo: e.currentTarget.value })}
           />
         </div>
         <Show when={dateRangeInvalid()}>
-          <p class="mt-1.5 text-xs text-red-400">
+          <p class="mt-1.5 text-caption text-red-400">
             Start date is after end date — no models will match.
           </p>
         </Show>
       </div>
 
-      {/* Lane 3 — benchmark gates behind a disclosure (sparse coverage) */}
-      <div class="mf-dz">
+      {/* Lane 3 — benchmark gates behind a disclosure (sparse coverage). The
+          wrapper carries data-bench-open so the gate body can react via the
+          group-data variant without a second checkbox-style input. */}
+      <div class={MF_DZ}>
         <button
           type="button"
           onClick={() => setBenchOverride(!benchOpen())}
           aria-expanded={benchOpen() ? "true" : "false"}
           aria-controls={`bench-gate-body${m}`}
-          class="mf-sum mf-focus w-full"
+          class={MF_SUMMARY}
           data-panel-bench-toggle
         >
           <span class="flex items-center gap-2">
-            <svg
-              class="mf-gate-chev"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m6 9 6 6 6-6"></path>
-            </svg>
+            <ChevronDownIcon open={benchOpen()} />
             Benchmark gates
           </span>
-          <span class="text-xs font-normal text-zinc-400">{benchGateSummary()}</span>
+          <span class="text-caption font-normal text-zinc-400 tabular-nums">{benchGateSummary()}</span>
         </button>
-        <div id={`bench-gate-body${m}`} class="mf-gate-body">
+        <div
+          id={`bench-gate-body${m}`}
+          class="hidden group-data-[bench-open]:grid grid-cols-2 gap-3 px-3 pb-3"
+        >
           <div class="min-w-0">
-            <label class="mf-sub" for={`bench-min${m}`}>
+            <label class={MF_SUB} for={`bench-min${m}`}>
               Min result (0–1)
             </label>
             <input
@@ -757,20 +790,20 @@ export function SearchFilter(props: SearchFilterProps) {
               max="1"
               step="0.01"
               placeholder="e.g. 0.5"
-              class="mf-fi"
+              class={MF_INPUT}
               value={app.filters().benchMin}
               onInput={(e) => app.updateFilters({ benchMin: e.currentTarget.value })}
             />
             <Show when={benchRangeInvalid()}>
-              <p class="mt-1.5 text-xs text-red-400">Benchmark result must be between 0 and 1.</p>
+              <p class="mt-1.5 text-caption text-red-400">Benchmark result must be between 0 and 1.</p>
             </Show>
           </div>
           <div class="min-w-0">
-            <label class="mf-sub" for={`bench-max-cost${m}`}>
+            <label class={MF_SUB} for={`bench-max-cost${m}`}>
               Max cost (USD / attempt)
             </label>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm pointer-events-none">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-body pointer-events-none">
                 $
               </span>
               <input
@@ -780,7 +813,7 @@ export function SearchFilter(props: SearchFilterProps) {
                 min="0"
                 step="0.01"
                 placeholder="No max"
-                class="mf-fi mf-pl-currency"
+                class={`${MF_INPUT} pl-7`}
                 value={app.filters().benchMaxCost}
                 onInput={(e) => app.updateFilters({ benchMaxCost: e.currentTarget.value })}
               />
@@ -796,20 +829,20 @@ export function SearchFilter(props: SearchFilterProps) {
           const open = e.currentTarget.open;
           if (open !== assumptionsOpen()) setAssumptionsOverride(open);
         }}
-        class="mf-dz"
+        class={MF_DZ}
       >
-        <summary class="mf-sum mf-focus">
+        <summary class={MF_SUMMARY}>
           <span class="flex items-center gap-2">
             <ChevronDownIcon open={assumptionsOpen()} />
             Cost assumptions
           </span>
-          <span class="text-xs font-normal text-zinc-400">
+          <span class="text-caption font-normal text-zinc-400 tabular-nums">
             {formatCostAssumptionSummary(normalizedCostAssumptions())}
           </span>
         </summary>
-        <div class="mf-asmp">
+        <div class="flex flex-wrap gap-3 px-3 pb-3">
           <label class="block">
-            <span class="mf-sub">Output token share (%)</span>
+            <span class={MF_SUB}>Output token share (%)</span>
             <input
               id={`avg-output-share${m}`}
               type="number"
@@ -817,13 +850,13 @@ export function SearchFilter(props: SearchFilterProps) {
               min="0"
               max="100"
               step="0.1"
-              class="mf-fi"
+              class={MF_INPUT}
               value={formatCostAssumptionInputValue(normalizedCostAssumptions().outputTokenShare)}
               onInput={(e) => updateOutputShare(e.currentTarget.value)}
             />
           </label>
           <label class="block">
-            <span class="mf-sub">Input cache hit rate (%)</span>
+            <span class={MF_SUB}>Input cache hit rate (%)</span>
             <input
               id={`avg-cache-hit-rate${m}`}
               type="number"
@@ -831,7 +864,7 @@ export function SearchFilter(props: SearchFilterProps) {
               min="0"
               max="100"
               step="0.1"
-              class="mf-fi"
+              class={MF_INPUT}
               value={formatCostAssumptionInputValue(normalizedCostAssumptions().inputCacheHitRate)}
               onInput={(e) => updateCacheHitRate(e.currentTarget.value)}
             />
@@ -856,7 +889,7 @@ export function SearchFilter(props: SearchFilterProps) {
             placeholder="Search models by name or ID..."
             value={app.filters().search}
             onInput={(e) => app.setSearch(e.currentTarget.value)}
-            class="w-full pl-9 pr-9 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-sm text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
+            class="w-full pl-9 pr-9 py-2.5 max-sm:py-3 bg-zinc-900 border border-zinc-700 rounded-xl text-body text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition-all duration-200"
           />
           <Show when={app.filters().search}>
             <button
@@ -877,7 +910,7 @@ export function SearchFilter(props: SearchFilterProps) {
             onClick={() => setFiltersOpen(true)}
             aria-expanded={filtersOpen() ? "true" : "false"}
             aria-controls="filters-sheet"
-            class={`flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-medium border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+            class={`flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-body font-medium border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
               activeRangeCount() > 0
                 ? "bg-violet-500/10 text-violet-300 border-violet-500/40 hover:border-violet-500/60"
                 : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
@@ -886,7 +919,7 @@ export function SearchFilter(props: SearchFilterProps) {
             <SlidersIcon />
             Filters
             <Show when={activeRangeCount() > 0}>
-              <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-xs font-semibold">
+              <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-caption font-semibold tabular-nums">
                 {activeRangeCount()}
               </span>
             </Show>
@@ -895,7 +928,7 @@ export function SearchFilter(props: SearchFilterProps) {
             <button
               type="button"
               onClick={app.resetFilters}
-              class="flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-sm font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              class="flex items-center justify-center gap-2 px-3 py-3 rounded-xl text-body font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
             >
               <ResetIcon />
               Reset filters
@@ -904,9 +937,9 @@ export function SearchFilter(props: SearchFilterProps) {
         </div>
 
         {/* Count readout — slim status line under the search on mobile */}
-        <div class="max-sm:py-0.5 max-sm:text-xs flex items-center justify-start sm:px-3 sm:py-2.5 text-sm text-zinc-400 whitespace-nowrap">
+        <div class="max-sm:py-0.5 max-sm:text-caption flex items-center justify-start sm:px-3 sm:py-2.5 text-body text-zinc-400 whitespace-nowrap">
           <span role="status" aria-label={`${props.filteredCount} of ${props.totalCount} models shown`}>
-            <span class="text-zinc-200 font-semibold">{props.filteredCount}</span>
+            <span class="text-zinc-200 font-semibold tabular-nums">{props.filteredCount}</span>
             <span class="mx-1">/</span>
             <span>{props.totalCount}</span>
             <span class="ml-1">models</span>
@@ -940,7 +973,7 @@ export function SearchFilter(props: SearchFilterProps) {
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded() ? "true" : "false"}
           aria-controls="more-filters-panel"
-          class={`hidden sm:flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+          class={`hidden sm:flex items-center gap-2 px-3 py-2.5 rounded-xl text-body font-medium border transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
             activeRangeCount() > 0
               ? "bg-violet-500/10 text-violet-300 border-violet-500/40 hover:border-violet-500/60"
               : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
@@ -949,7 +982,7 @@ export function SearchFilter(props: SearchFilterProps) {
           <SlidersIcon />
           {expanded() ? "Hide filters" : "More filters"}
           <Show when={activeRangeCount() > 0}>
-            <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-xs font-semibold">
+            <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-violet-500/20 text-violet-200 text-caption font-semibold tabular-nums">
               {activeRangeCount()}
             </span>
           </Show>
@@ -958,7 +991,7 @@ export function SearchFilter(props: SearchFilterProps) {
         <Show when={props.hasFilterCriteria}>
           <button
             onClick={app.resetFilters}
-            class="hidden sm:flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            class="hidden sm:flex items-center gap-2 px-3 py-2.5 rounded-xl text-body font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
           >
             <ResetIcon />
             Reset filters
@@ -981,7 +1014,7 @@ export function SearchFilter(props: SearchFilterProps) {
           class="fixed inset-x-0 bottom-0 z-40 sm:hidden flex flex-col max-h-[80vh] rounded-t-2xl border border-b-0 border-zinc-700 bg-zinc-900 shadow-2xl overflow-hidden"
         >
           <div class="flex items-center justify-between gap-2 p-3 border-b border-zinc-800 shrink-0">
-            <span class="text-sm font-semibold text-zinc-200">Filters</span>
+            <span class="text-title text-zinc-200">Filters</span>
             <button
               type="button"
               onClick={() => setFiltersOpen(false)}
@@ -993,7 +1026,7 @@ export function SearchFilter(props: SearchFilterProps) {
           </div>
           <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
             <div>
-              <label class="block text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
+              <label class="block text-caption font-medium uppercase tracking-wide text-zinc-400 mb-2">
                 Provider
               </label>
               <ProviderCombobox
@@ -1006,7 +1039,7 @@ export function SearchFilter(props: SearchFilterProps) {
             <div>
               <label
                 for="filters-sheet-sort"
-                class="block text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2"
+                class="block text-caption font-medium uppercase tracking-wide text-zinc-400 mb-2"
               >
                 Sort by
               </label>
@@ -1019,13 +1052,10 @@ export function SearchFilter(props: SearchFilterProps) {
             </div>
 
             {/* Panel content — one source of truth: `expanded`. A shared URL
-                with active panel filters auto-expands it on load. */}
+                with active panel filters auto-expands it on load. The panel
+                root is the group scope for the data-bench-open gate variant. */}
             <Show when={expanded()}>
-              <div
-                id="more-filters-panel-m"
-                class="max-sm:block"
-                data-bench-open={benchOpen() ? "" : undefined}
-              >
+              <div id="more-filters-panel-m" class="max-sm:block">
                 {renderFiltersPanel("-m")}
               </div>
             </Show>
@@ -1036,7 +1066,7 @@ export function SearchFilter(props: SearchFilterProps) {
               <button
                 type="button"
                 onClick={app.resetAll}
-                class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-body font-medium bg-zinc-900 text-zinc-400 border border-zinc-700 hover:border-red-500/50 hover:text-red-400 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
               >
                 <ResetIcon />
                 Reset filters
@@ -1045,7 +1075,7 @@ export function SearchFilter(props: SearchFilterProps) {
             <button
               type="button"
               onClick={() => setFiltersOpen(false)}
-              class="ml-auto flex items-center justify-center px-6 py-2.5 rounded-xl text-sm font-medium bg-violet-600 hover:bg-violet-500 text-white transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              class="ml-auto flex items-center justify-center px-6 py-2.5 rounded-xl text-body font-medium bg-violet-600 hover:bg-violet-500 text-white transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
             >
               Done
             </button>
@@ -1055,7 +1085,7 @@ export function SearchFilter(props: SearchFilterProps) {
 
       {/* Hidden unpriced models — announced to screen readers when it appears */}
       <Show when={props.hiddenUnpricedCount > 0}>
-        <p role="status" class="text-xs text-amber-300">
+        <p role="status" class="text-caption text-amber-300">
           {props.hiddenUnpricedCount} model{props.hiddenUnpricedCount === 1 ? "" : "s"} without
           published prices hidden by the price filter.
         </p>
@@ -1063,14 +1093,11 @@ export function SearchFilter(props: SearchFilterProps) {
 
       {/* Collapsible "More filters" panel — desktop (sm+). Below sm the same
           content renders inside the mobile filters sheet instead. The panel
-          carries the active-bench state so the gate disclosure CSS can react
-          without a second checkbox-style input. */}
+          root carries both the group scope and the active-bench state so the
+          gate body reacts via the group-data variant without a second
+          checkbox-style input. */}
       <Show when={expanded()}>
-        <div
-          id="more-filters-panel"
-          class="max-sm:hidden"
-          data-bench-open={benchOpen() ? "" : undefined}
-        >
+        <div id="more-filters-panel" class="max-sm:hidden">
           {renderFiltersPanel("")}
         </div>
       </Show>

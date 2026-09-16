@@ -93,7 +93,7 @@ function ProviderBadge(props: { provider: string }) {
 
   return (
     <span
-      class={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${colorClass} shrink-0`}
+      class={`inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium border ${colorClass} shrink-0`}
     >
       {formatProviderName(props.provider)}
     </span>
@@ -102,7 +102,7 @@ function ProviderBadge(props: { provider: string }) {
 
 function FreeBadge() {
   return (
-    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-neon-green/10 text-neon-green border border-neon-green/30 shrink-0">
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-caption font-bold bg-neon-green/10 text-neon-green border border-neon-green/30 shrink-0">
       FREE
     </span>
   );
@@ -110,7 +110,7 @@ function FreeBadge() {
 
 function NewBadge() {
   return (
-    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-violet-500/15 text-violet-300 border border-violet-400/30 shrink-0">
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-caption font-bold bg-violet-500/15 text-violet-300 border border-violet-400/30 shrink-0">
       NEW
     </span>
   );
@@ -119,7 +119,7 @@ function NewBadge() {
 function BenchValueTick() {
   return (
     <span
-      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30 shrink-0"
+      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption font-semibold bg-sky-500/10 text-sky-300 border border-sky-500/30 shrink-0"
       title="Cheapest per attempt among the top TerminalBench scorers in the current results"
     >
       <svg
@@ -182,9 +182,9 @@ function TerminalBenchStat(props: {
       <div
         id={infoId}
         role="tooltip"
-        class="absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-56 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-xs shadow-lg shadow-black/30"
+        class="absolute bottom-full left-0 z-50 mb-1.5 w-max max-w-56 rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2 text-caption shadow-lg shadow-black/30"
       >
-        <p class="font-semibold text-sky-400 mb-1">TerminalBench</p>
+        <p class="font-semibold text-sky-400 mb-1 text-title">TerminalBench</p>
         <p class="text-zinc-300">Overall: {formatPercent(props.score, 1)}</p>
         <p class="text-zinc-400">Avg attempt cost: {formatUsd(props.avgAttemptCostUsd)}</p>
         <p class="text-zinc-400 mt-1">0–100, agentic terminal tasks</p>
@@ -201,7 +201,7 @@ function TerminalBenchStat(props: {
           aria-expanded={open() ? "true" : "false"}
           aria-label={`TerminalBench: ${formatPercent(props.score, 1)}`}
           aria-describedby={open() ? infoId : undefined}
-          class="inline-flex items-center gap-1 px-1.5 max-sm:min-h-[44px] max-sm:px-3 rounded-md text-xs font-medium bg-sky-500/10 text-sky-300 border border-sky-500/25 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+          class="inline-flex items-center gap-1 px-1.5 max-sm:min-h-[44px] max-sm:px-3 rounded-md text-caption font-medium bg-sky-500/10 text-sky-300 border border-sky-500/25 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 tabular-nums"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -234,10 +234,10 @@ function TerminalBenchStat(props: {
         aria-describedby={open() ? infoId : undefined}
         class="w-full flex flex-col items-center justify-center px-3 py-2 max-sm:min-h-[44px] rounded-lg bg-sky-500/10 border border-sky-500/25 min-w-0 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
-        <span class="text-xs text-sky-400 font-medium uppercase tracking-wide leading-none mb-1">
+        <span class="text-caption text-sky-400 font-medium uppercase tracking-wide leading-none mb-1">
           TerminalBench
         </span>
-        <span class="text-sm font-semibold text-sky-300 leading-none">
+        <span class="text-value text-sky-300 leading-none tabular-nums">
           {formatPercent(props.score, 1)}
         </span>
       </button>
@@ -256,7 +256,7 @@ function TrainingWarning() {
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open() ? "true" : "false"}
         aria-describedby={open() ? infoId : undefined}
-        class="flex items-center gap-2 text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        class="flex items-center gap-2 text-micro text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
         <span aria-hidden="true">!</span>
         <span>This provider may train on your prompts.</span>
@@ -264,7 +264,7 @@ function TrainingWarning() {
       <Show when={open()}>
         <p
           id={infoId}
-          class="mt-1 rounded-md border border-amber-500/20 bg-zinc-800 px-3 py-2 text-[11px] text-amber-200"
+          class="mt-1 rounded-md border border-amber-500/20 bg-zinc-800 px-3 py-2 text-micro text-amber-200"
         >
           Review the provider's data-use policy before sending sensitive prompts.
         </p>
@@ -331,7 +331,7 @@ function ModalityBadges(props: { modalities: string[] }) {
         if (!cfg) return null;
         return (
           <span
-            class={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium border ${cfg.color}`}
+            class={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-micro font-medium border ${cfg.color}`}
           >
             {cfg.icon}
             {cfg.label}
@@ -357,17 +357,17 @@ function StatPill(props: { label: string; value: string; info?: string }) {
         aria-describedby={props.info && open() ? infoId : undefined}
         class="w-full flex flex-col items-center justify-center px-3 py-2 rounded-lg bg-zinc-800/60 border border-zinc-700/50 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
-        <span class="text-xs text-zinc-400 font-medium uppercase tracking-wide leading-none mb-1">
+        <span class="text-caption text-zinc-400 font-medium uppercase tracking-wide leading-none mb-1">
           {props.label}
         </span>
-        <span class="text-sm font-semibold text-zinc-200 leading-none truncate w-full text-center">
+        <span class="text-value text-zinc-200 leading-none tabular-nums truncate w-full text-center">
           {props.value}
         </span>
       </button>
       <Show when={props.info && open()}>
         <p
           id={infoId}
-          class="absolute left-1/2 top-full z-20 mt-1 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-300 shadow-lg"
+          class="absolute left-1/2 top-full z-20 mt-1 w-max max-w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-caption text-zinc-300 shadow-lg"
         >
           {props.info}
         </p>
@@ -445,7 +445,7 @@ function ExpandableDescription(props: {
             setExpanded((v) => !v);
           }}
           aria-expanded={expanded() ? "true" : "false"}
-          class="mt-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded"
+          class="mt-1 text-caption text-zinc-400 hover:text-zinc-200 transition-colors duration-150 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded"
         >
           {expanded() ? "Show less" : "Show more"}
         </button>
@@ -550,7 +550,7 @@ function ModelCardList(props: {
       {/* Model identity + badges */}
       <div class="min-w-0 max-sm:mb-1">
         <div class="flex items-center gap-2 mb-1">
-          <h3 class="text-sm font-semibold text-zinc-100 truncate">
+          <h3 class="text-title text-zinc-100 truncate">
             {formatDisplayName(model().name)}
           </h3>
           <ProviderBadge provider={props.provider} />
@@ -558,10 +558,10 @@ function ModelCardList(props: {
           {props.isNew && <NewBadge />}
         </div>
         <Show when={model().description}>
-          <p class="hidden sm:block text-xs text-zinc-400 truncate leading-relaxed">
+          <p class="hidden sm:block text-caption text-zinc-400 truncate">
             {model().description}
           </p>
-          <p class="sm:hidden text-xs text-zinc-400 line-clamp-2 leading-relaxed mt-1">
+          <p class="sm:hidden text-caption text-zinc-400 line-clamp-2 mt-1">
             {model().description}
           </p>
         </Show>
@@ -572,12 +572,12 @@ function ModelCardList(props: {
         </Show>
       </div>
       {/* Context */}
-      <span class="hidden sm:block text-sm font-medium text-zinc-300 text-right tabular-nums whitespace-nowrap">
+      <span class="hidden sm:block text-value text-zinc-300 text-right tabular-nums whitespace-nowrap">
         {props.contextLength}
       </span>
       {/* In */}
       <span
-        class={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+        class={`hidden sm:block text-value text-right tabular-nums whitespace-nowrap ${
           props.free ? "text-neon-green" : "text-zinc-300"
         }`}
       >
@@ -585,7 +585,7 @@ function ModelCardList(props: {
       </span>
       {/* Out */}
       <span
-        class={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+        class={`hidden sm:block text-value text-right tabular-nums whitespace-nowrap ${
           props.free ? "text-neon-green" : "text-zinc-300"
         }`}
       >
@@ -593,7 +593,7 @@ function ModelCardList(props: {
       </span>
       {/* Avg */}
       <span
-        class={`hidden sm:block text-sm font-medium text-right tabular-nums whitespace-nowrap ${
+        class={`hidden sm:block text-value text-right tabular-nums whitespace-nowrap ${
           props.free ? "text-neon-green" : "text-zinc-300"
         }`}
       >
@@ -604,7 +604,7 @@ function ModelCardList(props: {
         <Show
           when={model().terminalBench}
           fallback={
-            <span class="text-sm text-zinc-500" aria-hidden="true">
+            <span class="text-body text-zinc-500" aria-hidden="true">
               —
             </span>
           }
@@ -619,7 +619,7 @@ function ModelCardList(props: {
         </Show>
       </span>
       {/* Age */}
-      <span class="hidden sm:block text-xs font-medium text-right whitespace-nowrap">
+      <span class="hidden sm:block text-caption font-medium text-right tabular-nums whitespace-nowrap">
         <Show when={props.relativeAge}>
           <span
             title={`Released ${props.createdDate}`}
@@ -641,7 +641,7 @@ function ModelCardList(props: {
         <button
           onClick={props.handleCopy}
           aria-live="polite"
-          class={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+          class={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
             props.copied
               ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
               : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 hover:border-zinc-600"
@@ -653,7 +653,7 @@ function ModelCardList(props: {
       </span>
       {/* Mobile stack: everything desktop columns hold, card-style */}
       <div class="sm:hidden space-y-2.5">
-        <div class="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-zinc-400">
+        <div class="flex flex-wrap gap-x-3 gap-y-1.5 text-caption text-zinc-400">
           <Show when={model().terminalBench}>
             {(bench) => (
               <TerminalBenchStat
@@ -668,24 +668,24 @@ function ModelCardList(props: {
           </span>
           <span class="flex items-center gap-1">
             In:{" "}
-            <span class={`font-medium ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
+            <span class={`font-medium tabular-nums ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
               {props.promptPrice}
             </span>
           </span>
           <span class="flex items-center gap-1">
             Out:{" "}
-            <span class={`font-medium ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
+            <span class={`font-medium tabular-nums ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
               {props.completionPrice}
             </span>
           </span>
           <span class="flex items-center gap-1">
             Avg:{" "}
-            <span class={`font-medium ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
+            <span class={`font-medium tabular-nums ${props.free ? "text-neon-green" : "text-zinc-300"}`}>
               {props.avgPrice}
             </span>
           </span>
         </div>
-        <div class="flex flex-wrap gap-3 text-[11px] text-zinc-400">
+        <div class="flex flex-wrap gap-3 text-micro text-zinc-400">
           <span>per 1M · {props.avgAssumptionSummary}</span>
           <Show when={props.relativeAge}>
             <span class="font-mono">{model().id}</span>
@@ -701,14 +701,14 @@ function ModelCardList(props: {
               }
             >
               {props.relativeAge}
-              <span class="text-zinc-500 font-normal"> · {props.createdDate}</span>
+              <span class="text-zinc-500 font-normal tabular-nums"> · {props.createdDate}</span>
             </span>
           </Show>
         </div>
         <button
           onClick={props.handleCopy}
           aria-live="polite"
-          class={`w-full min-h-[44px] flex items-center justify-center gap-1.5 px-4 rounded-lg text-xs font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+          class={`w-full min-h-[44px] flex items-center justify-center gap-1.5 px-4 rounded-lg text-caption font-medium transition-all duration-200 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
             props.copied
               ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
               : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
@@ -745,7 +745,7 @@ function ModelCardGrid(props: {
       {/* Header */}
       <div class="flex items-start justify-between gap-2 mb-2">
         <div class="flex-1 min-w-0">
-          <h3 class="text-sm font-semibold text-zinc-100 leading-snug mb-1.5 line-clamp-2">
+          <h3 class="text-title text-zinc-100 leading-snug mb-1.5 line-clamp-2">
             {formatDisplayName(model().name)}
           </h3>
           <div class="flex flex-wrap gap-1.5">
@@ -769,7 +769,7 @@ function ModelCardGrid(props: {
           <ExpandableDescription
             text={model().description}
             lineClamp={2}
-            class="text-xs text-zinc-400 leading-relaxed break-words"
+            class="text-caption text-zinc-400 break-words"
           />
         </div>
       </Show>
@@ -796,7 +796,7 @@ function ModelCardGrid(props: {
           />
         </div>
         <details class="mb-3 rounded-lg border border-zinc-800 bg-zinc-950/30">
-          <summary class="cursor-pointer list-none px-3 py-2 text-xs font-medium text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-lg">
+          <summary class="cursor-pointer list-none px-3 py-2 text-caption font-medium text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-lg">
             Direct token rates
           </summary>
           <div class="grid grid-cols-2 gap-2 px-3 pb-3">
@@ -804,7 +804,7 @@ function ModelCardGrid(props: {
             <StatPill label="Out $/1M" value={props.completionPrice} />
           </div>
         </details>
-        <p class="mb-3 text-center text-[11px] leading-relaxed text-zinc-400">
+        <p class="mb-3 text-center text-micro text-zinc-400">
           Avg price per 1M · {props.avgAssumptionSummary}
         </p>
 
@@ -813,7 +813,7 @@ function ModelCardGrid(props: {
           <p
             title={`Released ${props.createdDate}`}
             aria-label={`Released ${props.createdDate}`}
-            class={`flex items-center justify-center gap-1 text-xs font-semibold mb-2 ${
+            class={`flex items-center justify-center gap-1 text-caption font-semibold mb-2 tabular-nums ${
               props.isNew
                 ? "text-violet-300"
                 : props.relativeAgeFresh
@@ -831,12 +831,12 @@ function ModelCardGrid(props: {
 
         {/* Model ID + Copy */}
         <div class="flex items-center gap-2 p-2 rounded-lg bg-zinc-800/40 border border-zinc-700/50">
-          <code class="flex-1 text-[11px] text-zinc-300 font-mono truncate">{model().id}</code>
+          <code class="flex-1 text-micro text-zinc-300 font-mono truncate">{model().id}</code>
           <button
             onClick={props.handleCopy}
             title="Copy model ID"
             aria-live="polite"
-            class={`shrink-0 flex items-center gap-1 px-2 py-1 max-sm:px-3 max-sm:min-h-[44px] max-sm:min-w-[44px] max-sm:justify-center rounded-md text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
+            class={`shrink-0 flex items-center gap-1 px-2 py-1 max-sm:px-3 max-sm:min-h-[44px] max-sm:min-w-[44px] max-sm:justify-center rounded-md text-caption font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${
               props.copied ? "bg-emerald-500/10 text-emerald-400" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700"
             }`}
           >

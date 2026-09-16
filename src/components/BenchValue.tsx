@@ -15,7 +15,7 @@ export function BenchValueStrip(props: {
 }) {
   const bench = () => props.leader.terminalBench!;
   return (
-    <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-3 py-2.5 rounded-lg border border-sky-500/25 bg-sky-500/5 text-sm">
+    <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-3 py-2.5 rounded-lg border border-sky-500/25 bg-sky-500/5 text-body">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="16"
@@ -50,7 +50,7 @@ export function BenchValueStrip(props: {
           </Show>
         </span>
       </p>
-      <span class="ml-auto max-sm:ml-0 max-sm:basis-full text-[11px] text-zinc-400 whitespace-nowrap">
+      <span class="ml-auto max-sm:ml-0 max-sm:basis-full text-micro text-zinc-400 whitespace-nowrap">
         benchmark measured for {props.scoredCount} of {props.totalCount} shown models
       </span>
     </div>
