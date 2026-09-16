@@ -19,34 +19,45 @@ colors:
   danger-red: "#f87171"
 typography:
   display:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "30px"
+    fontFamily: "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "30px (24px mobile)"
     fontWeight: 700
-    lineHeight: 1.2
+    lineHeight: 1.15 (1.2 mobile)
+    letterSpacing: "-0.02em (-0.015em mobile)"
   headline:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "16px"
-    fontWeight: 700
-    lineHeight: 1
+    fontFamily: "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "18px"
+    fontWeight: 600
+    lineHeight: 1.3
   title:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 600
     lineHeight: 1.4
   body:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "14px"
     fontWeight: 400
-    lineHeight: 1.6
-  label:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    lineHeight: 1.55
+  value:
+    fontFamily: "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "14px"
+    fontWeight: 600
+    lineHeight: 1.4
+    fontVariantNumeric: "tabular-nums"
+  caption:
+    fontFamily: "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "12px"
-    fontWeight: 500
-    lineHeight: 1
-    letterSpacing: "0.025em"
-  mono:
-    fontFamily: "Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+    fontWeight: 400-500
+    lineHeight: 1.5
+  micro:
+    fontFamily: "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "11px"
+    fontWeight: 400
+    lineHeight: 1.45
+  mono:
+    fontFamily: "Geist Mono Variable, Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
+    fontSize: "12px (11px in trays)"
     fontWeight: 400
 rounded:
   sm: "6px"
@@ -139,22 +150,26 @@ A near-monochrome zinc field where every chromatic token is a semantic signal, s
 
 ## Typography
 
-**Display/Body Font:** Geist (with full system-UI fallback stack) — loaded via `next/font` (`--font-geist-sans`) and mapped to the Tailwind theme as `--font-sans` in `globals.css`, so the sans voice renders Geist everywhere.
-**Label/Mono Font:** Geist Mono (with system mono fallback) — loaded via `next/font` (`--font-geist-mono`) and mapped as `--font-mono`; reserved for model IDs.
+**Display/Body Font:** Geist Variable — self-hosted via the `@fontsource-variable/geist` npm package, imported in `src/index.tsx` and mapped to the Tailwind v4 theme as `--font-sans` in `src/index.css`. Full system-UI fallback stack; `font-display: swap` avoids invisible text.
+**Label/Mono Font:** Geist Mono Variable — self-hosted via `@fontsource-variable/geist-mono`, mapped as `--font-mono`; reserved for model IDs.
 
 **Character:** utilitarian and self-effacing; hierarchy comes from weight and size steps, never from a second typeface. Text is dense but never below an 11px floor.
 
-### Hierarchy
-- **Display** (700, 24px mobile / 30px desktop): the single hero statement ("Latest AI Models"); one per page.
-- **Headline** (700, 16px): the brand lockup "Kilo Gateway" in the sticky header.
-- **Title** (600, 14px): model names on cards and section labels inside panels.
-- **Body** (400, 14px, hero paragraphs capped at `max-w-2xl`; card descriptions 12px at 1.625 line-height): descriptions and helper copy.
-- **Label** (500, 12px, uppercase, +2.5% tracking): stat-pill labels, badges, micro-labels; 11px is the absolute floor for functional text (dates, assumption summaries, model IDs).
-- **Mono** (11px): model IDs and nothing else — mono is the machine-identity voice.
+### Role Ramp
+The ramp lives as Tailwind v4 `@theme` tokens in `src/index.css` (`--text-*` with paired `--line-height`/`--letter-spacing`/`--font-weight`), so a role is one class. Roles are purpose-named; never introduce a raw `text-xs`/`text-sm`-style value beside them.
+- **Display** (`text-display` / `text-display-sm`, 700, 30px desktop / 24px mobile, 1.15/1.2, −2%/−1.5% tracking): the single hero statement ("Latest AI Models"); one per page.
+- **Headline** (`text-headline`, 600, 18px, 1.3): state headings ("Models are unavailable", "No models found").
+- **Title** (`text-title`, 600, 14px, 1.4): model names on cards, panel/sheet titles, the brand lockup.
+- **Body** (`text-body`, 400, 14px, 1.55): default voice for controls, inputs, descriptions, helper copy.
+- **Value** (`text-value`, 600, 14px, 1.4): all numbers — stat-pill values, table columns, counts — always paired with `tabular-nums` so digits align vertically. Prices in list rows keep their semantic color; FREE $0 renders in Terminal Green.
+- **Caption** (`text-caption`, 400–500, 12px, 1.5): the 12px voice — chips, badges, notices, small copy. The uppercase label form composes on top: `text-caption font-medium uppercase tracking-wide` (stat-pill labels, section labels, the list-table header).
+- **Micro** (`text-micro`, 400, 11px, 1.45): the functional floor — dates, assumption summaries, model-ID trays, the list footer.
+- **Mono** (`text-mono` / `font-mono`, 400, 12px; 11px in the ID tray): model IDs and nothing else — mono is the machine-identity voice.
 
 ### Named Rules
 **The Two-Voice Rule.** Sans for everything human, mono for everything the machine identifies — never mix roles.
 **The 11px Floor Rule.** No functional text renders below 11px; if content must shrink further, it must be cut, not shrunk.
+**The Tabular Rule.** Every numeric string that sits in a column or refreshes in place renders with `tabular-nums`; proportional figures are for prose only.
 
 ## Layout
 

@@ -27,8 +27,8 @@ import { createAppState } from "@/lib/appState";
 /** A filter chip is amber when it flags unpriced models hidden by the price filter. */
 function chipClass(chip: string): string {
   return chip.endsWith(UNPRICED_CHIP_SUFFIX)
-    ? "px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-300 border border-amber-500/20"
-    : "px-2 py-0.5 rounded-full text-xs bg-zinc-800/80 text-zinc-300 border border-zinc-700";
+    ? "px-2 py-0.5 rounded-full text-caption bg-amber-500/10 text-amber-300 border border-amber-500/20"
+    : "px-2 py-0.5 rounded-full text-caption bg-zinc-800/80 text-zinc-300 border border-zinc-700";
 }
 
 function ErrorState(props: { message: string; onRetry: () => void }) {
@@ -53,12 +53,12 @@ function ErrorState(props: { message: string; onRetry: () => void }) {
           <line x1="12" x2="12.01" y1="16" y2="16" />
         </svg>
       </div>
-      <h3 class="text-lg font-semibold text-zinc-200 mb-2">Models are unavailable</h3>
-      <p class="text-sm text-zinc-400 mb-1 max-w-sm">{props.message}</p>
-      <p class="text-xs text-zinc-400 max-w-sm mb-6">Check your connection, then try again.</p>
+      <h3 class="text-headline text-zinc-200 mb-2">Models are unavailable</h3>
+      <p class="text-body text-zinc-400 mb-1 max-w-sm">{props.message}</p>
+      <p class="text-caption text-zinc-400 max-w-sm mb-6">Check your connection, then try again.</p>
       <button
         onClick={props.onRetry}
-        class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-body font-medium rounded-lg transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
       >
         Try again
       </button>
@@ -90,8 +90,8 @@ function EmptyState(props: {
           <path d="m21 21-4.3-4.3" />
         </svg>
       </div>
-      <h3 class="text-lg font-semibold text-zinc-200 mb-2">No models found</h3>
-      <p class="text-sm text-zinc-400">
+      <h3 class="text-headline text-zinc-200 mb-2">No models found</h3>
+      <p class="text-body text-zinc-400">
         {props.hasFilters
           ? "No models match the active filters."
           : "No models are available at this time."}
@@ -110,7 +110,7 @@ function EmptyState(props: {
       <Show when={props.hasFilters}>
         <button
           onClick={props.onReset}
-          class="mt-6 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+          class="mt-6 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-body font-medium rounded-lg transition-colors duration-200"
         >
           Clear all filters
         </button>
@@ -385,8 +385,8 @@ export default function App() {
                 </svg>
               </div>
               <div>
-                <p class="text-base font-bold text-zinc-100 leading-none">Kilo Gateway</p>
-                <p class="text-xs text-zinc-400 leading-none mt-0.5">AI Model Explorer</p>
+                <p class="text-title font-bold text-zinc-100 leading-none">Kilo Gateway</p>
+                <p class="text-caption text-zinc-400 leading-none mt-0.5">AI Model Explorer</p>
               </div>
             </div>
             <ViewToggle
@@ -401,16 +401,19 @@ export default function App() {
       <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
         <div class="mb-8">
           <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 class="text-2xl sm:text-3xl font-bold text-zinc-100">Latest AI Models</h1>
+            <h1 class="text-display-sm sm:text-display text-zinc-100">Latest AI Models</h1>
             <Show when={app.dataUpdatedAt() != null}>
-              <FreshnessStamp updatedAt={app.dataUpdatedAt()!} class="text-xs text-zinc-300" />
+              <FreshnessStamp
+                updatedAt={app.dataUpdatedAt()!}
+                class="text-caption tabular-nums text-zinc-300"
+              />
             </Show>
           </div>
-          <p class="mt-2 text-zinc-400 text-sm sm:text-base max-w-2xl">
+          <p class="mt-2 text-zinc-400 text-body max-w-2xl">
             Newest releases across every provider on the Kilo Gateway — compare price, context,
             and capability to pick the current best.
           </p>
-          <p class="mt-2 text-xs text-zinc-400">
+          <p class="mt-2 text-caption text-zinc-400">
             Newest first · NEW marks releases from the last 14 days
           </p>
         </div>
@@ -433,7 +436,7 @@ export default function App() {
         <Show when={app.assumptionsAdjustedNotice()}>
           <div
             role="status"
-            class="flex items-center justify-between gap-3 mt-3 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs text-amber-300"
+            class="flex items-center justify-between gap-3 mt-3 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-caption text-amber-300"
           >
             <span>Shared cost assumptions were outside 0–100% and were adjusted.</span>
             <button
@@ -450,7 +453,7 @@ export default function App() {
         <Show when={app.invalidParamsNotice()}>
           <div
             role="status"
-            class="flex items-center justify-between gap-3 mt-3 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-xs text-amber-300"
+            class="flex items-center justify-between gap-3 mt-3 px-3 py-2 rounded-lg border border-amber-500/30 bg-amber-500/10 text-caption text-amber-300"
           >
             <span>
               Ignored invalid filter(s) from link: {app.invalidParamsNotice()!.join(", ")}
@@ -519,7 +522,7 @@ export default function App() {
                   <div
                     role="row"
                     aria-rowindex={1}
-                    class="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-2.5 sticky top-16 z-5 bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800 text-xs uppercase tracking-wide text-zinc-400"
+                    class="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_80px_96px_96px_96px_72px_64px_108px] sm:items-center sm:gap-x-4 sm:px-4 sm:py-2.5 sticky top-16 z-5 bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800 text-caption font-medium uppercase tracking-wide text-zinc-400"
                   >
                     <span>Model</span>
                     <span class="text-right whitespace-nowrap">Context</span>
@@ -542,7 +545,7 @@ export default function App() {
                       )}
                     </For>
                   </div>
-                  <p class="px-4 py-2.5 text-[11px] text-zinc-400 border border-zinc-800 rounded-xl bg-zinc-900/40 mt-3">
+                  <p class="px-4 py-2.5 text-micro text-zinc-400 border border-zinc-800 rounded-xl bg-zinc-900/40 mt-3">
                     Prices per 1M tokens · avg assumes{" "}
                     {formatCostAssumptionSummary(app.filters().costAssumptions)}
                     {costAssumptionsActive() && " (custom — adjust in More filters)"}
@@ -562,7 +565,7 @@ export default function App() {
                 </p>
               </Show>
               <Show when={!hasMore()}>
-                <div class="text-center text-xs py-8">
+                <div class="text-center text-caption py-8">
                   <p role="status" class="text-zinc-400">
                     All {filteredModels().length} models shown
                   </p>
@@ -581,7 +584,7 @@ export default function App() {
 
       {/* Footer */}
       <footer class="border-t border-zinc-800/60 py-6">
-        <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-400">
+        <div class="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-caption text-zinc-400">
           Data sourced from{" "}
           <a
             href="https://api.kilo.ai/api/gateway/models"

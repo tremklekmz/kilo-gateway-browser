@@ -56,10 +56,10 @@ Bun works too (`bun run dev`, etc.); there is no lockfile committed yet. There i
 - **Comments are dense and explain *why*** (design rationale, edge cases, non-obvious timezone/`created`-unit reasoning). Preserve that voice; don't strip explanatory comments.
 - **Styling recipes** (Tailwind, zinc monochrome + closed semantic palette):
   - Card: `rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 transition-all duration-200`.
-  - Badge/pill: `inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0`.
+  - Badge/pill: `inline-flex items-center px-2 py-0.5 rounded-full text-caption font-medium border shrink-0`.
   - Focus ring (interactivity accent): `focus-visible:ring-2 focus-visible:ring-violet-400`.
 - **Color semantics are closed — never repurpose** (DESIGN.md "One Voice" / "Meaning-Only Color" rules): Signal Violet `#8b5cf6` = interactivity only; Terminal Green `#39ff14` (token `--color-neon-green`) = **free only**; Bench Blue (sky `#38bdf8`) = TerminalBench; Amber = caution; Emerald = copy-confirmed; Red = invalid/destructive. **`zinc-500`/`zinc-600` are banned for body copy** (fail contrast on the zinc field).
-- **Typography**: Geist sans for human text (loaded from `index.html` font stack fallbacks — no `next/font`); Geist Mono for model IDs only; 11px floor for functional text; containers capped at `max-w-screen-xl` (1280px).
+- **Typography**: Geist Variable sans for human text + Geist Mono Variable for model IDs only — self-hosted via `@fontsource-variable/*` packages, imported in `src/index.tsx`, tokens in `src/index.css` `@theme`. Use the role ramp classes (`text-display(-sm)`, `text-headline`, `text-title`, `text-body`, `text-value` + `tabular-nums`, `text-caption`, `text-micro`) — never raw `text-xs`/`text-sm`/arbitrary sizes beside them; 11px floor for functional text; containers capped at `max-w-screen-xl` (1280px).
 - **Accessibility**: `role="group"`+`aria-label` on segmented controls, `aria-pressed` on toggles, `aria-live="polite"` for status/copy announcements, `aria-hidden` on decorative SVGs, tooltips via `id`+`aria-describedby`, 44px mobile tap targets (`max-sm:`). `FreshnessStamp` must stay **outside** any `aria-live` region (its 30s tick would re-announce). Both `aria-modal` surfaces (mobile filters sheet, provider popover) have focus traps — keep them when editing.
 
 ## Important Files
