@@ -1,15 +1,15 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Snapshots the gateway catalogue into public/data/models.json.
 //
 // Why a committed snapshot: api.kilo.ai does not send CORS headers, so a
 // browser SPA cannot fetch it directly. The CI sync job below refreshes this
-// file every 15 minutes; the app reads only this snapshot. Runs on Node
-// built-ins alone — the workflow executes it before `npm ci`, with no
+// file every 15 minutes; the app reads only this snapshot. Runs on runtime
+// built-ins alone — the workflow executes it before `bun install`, with no
 // dependencies installed.
 //
-// The models:sync script only needs Node ≥ 18 (global fetch); everything else
-// uses Bun. Keep this file dependency-free.
-import { mkdir, writeFile } from "node:fs/promises";
+// The models:sync script only needs a modern runtime with global fetch
+// (Bun ≥ 1.0). Keep this file dependency-free.
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,9 +27,25 @@ try {
     console.error("models:sync failed: unexpected response shape");
     process.exit(1);
   }
+  // Stamp when this snapshot was taken so the UI can show the snapshot's age
+  // instead of the client's fetch moment. Skip the rewrite when the catalogue
+  // bytes are unchanged (ignoring our own stamp) so CI commits stay
+  // change-driven rather than firing every 15 minutes on a new timestamp.
+  const takenAt = new Date().toISOString();
+  let prev = null;
+  try {
+    prev = JSON.parse(await readFile(OUT, "utf8"));
+  } catch {
+    prev = null; // No usable snapshot yet — write through below.
+  }
+  const prevDataJson = prev && Array.isArray(prev.data) ? JSON.stringify(prev.data) : null;
+  if (prevDataJson === JSON.stringify(data.data) && typeof prev.snapshotTakenAt === "string") {
+    console.log(`models:sync unchanged (${data.data.length} models); snapshot kept.`);
+    process.exit(0);
+  }
   await mkdir(dirname(OUT), { recursive: true });
-  await writeFile(OUT, JSON.stringify(data));
-  console.log(`models:sync wrote ${data.data.length} models to public/data/models.json`);
+  await writeFile(OUT, JSON.stringify({ ...data, snapshotTakenAt: takenAt }));
+  console.log(`models:sync wrote ${data.data.length} models to public/data/models.json (snapshotTakenAt ${takenAt})`);
 } catch (err) {
   console.error("models:sync failed:", err);
   process.exit(1);

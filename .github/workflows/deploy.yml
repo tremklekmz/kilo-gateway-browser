@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   # Keeps the committed snapshot current. Cheap on purpose: no dependencies are
-  # installed, because scripts/sync-models.mjs uses only Node built-ins.
+  # installed, because scripts/sync-models.mjs uses only runtime built-ins.
   sync:
     runs-on: ubuntu-latest
     permissions:
@@ -35,14 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
+      - uses: oven-sh/setup-bun@v2
 
       - name: Snapshot the gateway catalogue
         id: sync
         run: |
-          npm run models:sync
+          bun run models:sync
           if [ -z "$(git status --porcelain -- public/data/models.json)" ]; then
             echo "Catalogue unchanged; nothing to commit."
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -67,24 +65,21 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
 
-      - run: npm ci
+      - run: bun install --frozen-lockfile
 
       - name: Check types and lint
         run: |
-          npm run typecheck
-          npm run lint
+          bun run typecheck
+          bun run lint
 
       # A project site lives under /<repo>/, so the build has to know the prefix.
       # vite.config.ts reads this exact variable.
       - name: Point the build at the project pages subpath
         run: echo "BASE_PATH=/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
 
-      - run: npm run build
+      - run: bun run build
 
       - uses: actions/configure-pages@v6
 
