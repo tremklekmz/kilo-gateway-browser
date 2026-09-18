@@ -72,7 +72,7 @@ export function ModelCardGrid(props: {
       {/* Hero number + capability row. TB reuses the list-view compact chip
           (exact score + tap tooltip), never a rounded inline span. */}
       <div class="mt-3 border-y border-zinc-800 py-3">
-        <p class="text-caption font-medium uppercase tracking-wide text-zinc-400">
+        <p class="text-caption font-medium tracking-wide text-zinc-400">
           Avg cost · {props.avgAssumptionSummary}
         </p>
         <p class="text-display tabular-nums text-zinc-50">
