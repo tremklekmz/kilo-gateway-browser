@@ -3,12 +3,12 @@ name: Refresh models and deploy to GitHub Pages
 on:
   push:
     # `master` is this repository's default branch; keep `main` for repos that
-    # later rename it. A push made by the sync job below does not re-trigger this
+    # later rename it. A push made by the sync step below does not re-trigger this
     # workflow — GITHUB_TOKEN pushes never trigger runs — so the deploy always
     # happens in the same run, never in a follow-up one.
     branches: [main, master]
   # The refresh cadence. Commits are driven by changes, not by polls — the sync
-  # job commits only when the catalogue's bytes differ — so a shorter interval
+  # step commits only when the catalogue's bytes differ — so a shorter interval
   # buys freshness without adding commits. GitHub's scheduler is best effort and
   # deprioritizes frequent crons: 5 minutes is the floor it accepts, and below
   # about 15 the scheduling delay eats most of the gain.
@@ -24,52 +24,60 @@ permissions:
   contents: read
 
 jobs:
-  # Keeps the committed snapshot current. Cheap on purpose: no dependencies are
-  # installed, because scripts/sync-models.mjs uses only runtime built-ins.
-  sync:
+  # Sync + build share one job to save billed minutes: hosted runners bill per
+  # job rounded up to the minute, so the old 3-job chain cost 3 minutes per
+  # full run for ~35s of work. The no-op path (scheduled run, catalogue
+  # unchanged) stops right after the sync step — before `bun install` — so it
+  # stays well under one billed minute. Deploy stays separate: it targets the
+  # github-pages environment, and folding it in would put the whole toolchain
+  # inside the production environment's protection rules with pages:write.
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
-      changed: ${{ steps.sync.outputs.changed }}
+      built: ${{ steps.sync.outputs.should_build }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
 
+      # No dependencies installed yet on purpose:
+      # scripts/sync-models.mjs uses only runtime built-ins.
       - name: Snapshot the gateway catalogue
         id: sync
         run: |
           bun run models:sync
           if [ -z "$(git status --porcelain -- public/data/models.json)" ]; then
             echo "Catalogue unchanged; nothing to commit."
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            changed=false
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add public/data/models.json
+            git commit -m 'chore(models): refresh gateway catalogue'
+            git push
+            changed=true
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add public/data/models.json
-          git commit -m 'chore(models): refresh gateway catalogue'
-          git push
-          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          # Pushes and manual runs always build; schedules only when the
+          # snapshot actually changed. The commit above already sits in this
+          # workspace, so the build below uses it directly — no re-checkout.
+          # GITHUB_TOKEN pushes never re-trigger this workflow, so committing
+          # mid-job cannot cause a follow-up run.
+          if [ "$changed" = "true" ] || [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Scheduled run with no catalogue change; skipping build."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
 
-  build:
-    needs: sync
-    # A scheduled run that changed nothing has nothing to redeploy.
-    if: needs.sync.outputs.changed == 'true' || github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    steps:
-      # The sync job commits, so on scheduled runs the branch tip is newer than
-      # the SHA this event carries.
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.ref_name }}
-
-      - uses: oven-sh/setup-bun@v2
-
-      - run: bun install --frozen-lockfile
+      - name: Install dependencies
+        if: steps.sync.outputs.should_build == 'true'
+        run: bun install --frozen-lockfile
 
       - name: Check types and lint
+        if: steps.sync.outputs.should_build == 'true'
         run: |
           bun run typecheck
           bun run lint
@@ -77,13 +85,18 @@ jobs:
       # A project site lives under /<repo>/, so the build has to know the prefix.
       # vite.config.ts reads this exact variable.
       - name: Point the build at the project pages subpath
+        if: steps.sync.outputs.should_build == 'true'
         run: echo "BASE_PATH=/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
 
-      - run: bun run build
+      - name: Build
+        if: steps.sync.outputs.should_build == 'true'
+        run: bun run build
 
       - uses: actions/configure-pages@v6
+        if: steps.sync.outputs.should_build == 'true'
 
       - uses: actions/upload-pages-artifact@v5
+        if: steps.sync.outputs.should_build == 'true'
         with:
           path: dist
           # Without this the artifact drops dotfiles, so the deployed site would
@@ -92,6 +105,9 @@ jobs:
 
   deploy:
     needs: build
+    # The merged build job succeeds (no-op) on unchanged schedules, so gate on
+    # its output — previously the skipped build job skipped this transitively.
+    if: needs.build.outputs.built == 'true'
     runs-on: ubuntu-latest
     permissions:
       pages: write
