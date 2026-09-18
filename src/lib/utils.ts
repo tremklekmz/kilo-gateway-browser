@@ -275,8 +275,20 @@ export function formatPrice(price: string | number): string {
   // Negative pricing (e.g. "-1" sentinels from auto-router models) means the
   // gateway has not published a real per-token price: display "Varies".
   if (num < 0) return "Varies";
-  if (num < 0.000001) return `$${(num * 1_000_000).toFixed(4)}`;
-  return `$${(num * 1_000_000).toFixed(2)}`;
+
+  const scaled = num * 1_000_000;
+
+  if (num < 0.000001) {
+    const formatted = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4,
+      useGrouping: false,
+    }).format(scaled);
+
+    return `$${formatted}`;
+  }
+
+  return `$${scaled.toFixed(2)}`;
 }
 
 export function getUniqueProviders(models: AIModel[]): string[] {

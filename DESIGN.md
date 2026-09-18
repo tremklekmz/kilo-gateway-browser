@@ -150,7 +150,7 @@ A near-monochrome zinc field where every chromatic token is a semantic signal, s
 
 ## Typography
 
-**Display/Body Font:** Geist Variable — self-hosted via the `@fontsource-variable/geist` npm package, imported in `src/index.tsx` and mapped to the Tailwind v4 theme as `--font-sans` in `src/index.css`. Full system-UI fallback stack; `font-display: swap` avoids invisible text.
+**Display/Body Font:** Geist Variable — self-hosted via the `@fontsource-variable/geist` package (installed with Bun), imported in `src/index.tsx` and mapped to the Tailwind v4 theme as `--font-sans` in `src/index.css`. Full system-UI fallback stack; `font-display: swap` avoids invisible text.
 **Label/Mono Font:** Geist Mono Variable — self-hosted via `@fontsource-variable/geist-mono`, mapped as `--font-mono`; reserved for model IDs.
 
 **Character:** utilitarian and self-effacing; hierarchy comes from weight and size steps, never from a second typeface. Text is dense but never below an 11px floor.

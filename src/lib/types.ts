@@ -45,4 +45,6 @@ export interface AIModel {
 
 export interface ModelsResponse {
   data: AIModel[];
+  /** ISO-8601 moment the snapshot was taken by scripts/sync-models.mjs. */
+  snapshotTakenAt?: string;
 }

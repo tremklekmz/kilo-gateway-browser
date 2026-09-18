@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Kilo Gateway — AI Model Explorer. A recency-first, searchable explorer of every AI model exposed by the Kilo Gateway API. Stack: **SolidJS 2.0 RC (signals, `@solidjs/web` renderer), Vite 8, Tailwind CSS 4, TypeScript (strict), npm**. Deployed as a static SPA on **GitHub Pages** under `/<repo>/`.
+Kilo Gateway — AI Model Explorer. A recency-first, searchable explorer of every AI model exposed by the Kilo Gateway API. Stack: **SolidJS 2.0 RC (signals, `@solidjs/web` renderer), Vite 8, Tailwind CSS 4, TypeScript (strict), Bun**. Deployed as a static SPA on **GitHub Pages** under `/<repo>/`.
 
 Product lens is **recency**: newest releases lead, models released in the last 14 days carry a `NEW` badge, and placeholders (`created === 0`) sink to the end. The core job is to compare models by price (per-model + weighted average under user-configurable cost assumptions), context length, modalities, and sparse TerminalBench scores.
 
@@ -12,7 +12,7 @@ Documented principles (PRODUCT.md) you must respect: numbers stay honest (price 
 
 **Single data source**: `MODELS_API_URL = "https://api.kilo.ai/api/gateway/models"` in `src/lib/constants.ts` — hardcoded, no `process.env` indirection anywhere in the repo.
 
-**Committed snapshot (CORS workaround)**: the gateway API sends no CORS headers, so a browser SPA cannot call it. `scripts/sync-models.mjs` (Node built-ins only) fetches the catalogue into `public/data/models.json`, which ships as a static asset. Locally: `npm run models:sync`. In CI: `.github/workflows/deploy.yml` runs every 15 minutes, commits the snapshot when its bytes changed, then builds and deploys. The app fetches only `MODELS_SNAPSHOT_URL` (`${BASE_URL}data/models.json`).
+**Committed snapshot (CORS workaround)**: the gateway API sends no CORS headers, so a browser SPA cannot call it. `scripts/sync-models.mjs` (runtime built-ins only) fetches the catalogue into `public/data/models.json`, which ships as a static asset. Locally: `bun run models:sync`. In CI: `.github/workflows/deploy.yml` runs every 15 minutes, commits the snapshot when its bytes changed, then builds and deploys. The app fetches only `MODELS_SNAPSHOT_URL` (`${BASE_URL}data/models.json`).
 
 **URL-as-state engine** (the central pattern): `src/lib/appState.ts` owns the whole engine. Every filter, sort, view, and cost-assumption write lands in both the signal and the URL in one handler — `updateFilters` computes the next state, writes the signal, and serializes to query params via `history.replaceState` in the same synchronous step (Solid 2 staged writes forbid side effects inside functional setters), so the URL is the single shareable truth and a rendered frame never shows state the URL does not confirm. Search is debounced (250 ms); all other writes are immediate. There is no router, so the React port's self-echo suppression machinery does not exist here — `replaceState` fires no navigation events. Invalid shared params are validated, named once in a dismissible amber `role="status"` notice, then pruned from the URL once (notice persists until dismissed).
 
@@ -34,16 +34,16 @@ Documented principles (PRODUCT.md) you must respect: numbers stay honest (price 
 ## Development Commands
 
 ```bash
-npm install        # install dependencies
-npm run dev        # vite dev server (http://localhost:5173)
-npm run build      # vite build (BASE_PATH=/<repo>/ for Pages subpath)
-npm run preview    # serve the production build
-npm run lint       # eslint (flat config, no --fix/--max-warnings)
-npm run typecheck  # tsc --noEmit (strict)
-npm run models:sync # refresh public/data/models.json (Node built-ins only)
+bun install        # install dependencies
+bun run dev        # vite dev server (http://localhost:5173)
+bun run build      # vite build (BASE_PATH=/<repo>/ for Pages subpath)
+bun run preview    # serve the production build
+bun run lint       # eslint (flat config, no --fix/--max-warnings)
+bun run typecheck  # tsc --noEmit (strict)
+bun run models:sync # refresh public/data/models.json (runtime built-ins only)
 ```
 
-Bun works too (`bun run dev`, etc.); there is no lockfile committed yet. There is **no `test` script** and no test runner installed (see Testing & QA). `npm run lint` + `npm run typecheck` are the only automated quality gates.
+Install via `bun install` (fresh checkouts generate `bun.lock` on first install — commit it). There is **no `test` script** and no test runner installed (see Testing & QA). `bun run lint` + `bun run typecheck` are the only automated quality gates.
 
 ## Code Conventions & Common Patterns
 
@@ -77,12 +77,12 @@ Bun works too (`bun run dev`, etc.); there is no lockfile committed yet. There i
 | `src/components/SearchFilter.tsx` | Search input, provider combobox, More-filters panel, cost-assumption inputs, mobile bottom sheet (receives `AppState` directly) |
 | `src/components/ModelCard.tsx` | Card with grid + list branches; stat tiles; provider colorMap; FREE/NEW badges; TB disclosure; mono ID copy tray |
 | `public/data/models.json` | Committed catalogue snapshot — the app's only data fetch |
-| `scripts/sync-models.mjs` | Snapshot fetcher: Node built-ins only (CI runs it before `npm ci`) |
+| `scripts/sync-models.mjs` | Snapshot fetcher: runtime built-ins only (CI runs it before `bun install`) |
 | Config | `package.json`, `tsconfig.json`, `vite.config.ts`, `eslint.config.mjs`, `index.html` |
 
 ## Runtime & Tooling Preferences
 
-- **Package manager: npm** (CI uses `npm ci`; add a lockfile via `npm install` before merging). Bun works for local runs.
+- **Package manager: Bun** (CI uses `bun install --frozen-lockfile` against the committed `bun.lock`; add deps with `bun add`. Bun 1.3 migrates a legacy `package-lock.json` automatically on first `bun install`).
 - **Pinned majors** (sensitivity): `solid-js` + `@solidjs/web` 2.0.0-rc.8 (pin exact while on the RC — upgrade together); `@solidjs/vite-plugin` ^3.0.0-next; `vite` ^8; `typescript` ^5.9 (peer-constrained `<6`); `tailwindcss` + `@tailwindcss/vite` ^4.1; `eslint` ^9 flat config with `typescript-eslint`.
 - **TypeScript**: `strict`, `moduleResolution: "bundler"`, `jsx: "preserve"` + `jsxImportSource: "@solidjs/web"`, `noEmit`, `isolatedModules`. Path alias **`@/*` → `src/*`** — declared in `tsconfig.json` **and** mirrored in `vite.config.ts` `resolve.alias` (TS alone does not affect the build).
 - **Tailwind v4 is CSS-first**: no `tailwind.config`, no `content` array. `src/index.css` does `@import "tailwindcss"` + `@theme` tokens; `@tailwindcss/vite` wires the plugin.
@@ -92,6 +92,6 @@ Bun works too (`bun run dev`, etc.); there is no lockfile committed yet. There i
 ## Testing & QA
 
 - **No automated test suite exists**: no test/spec files, no `__tests__`, no `vitest`/`jest`/`playwright`/`cypress` config, no `test` script, no Storybook. Confirmed by repo-wide search.
-- **Quality gates** are `npm run lint` + `npm run typecheck`. QA is design-review driven through `/impeccable` plus browser verification at **1440px desktop and 375px mobile** before finishing.
+- **Quality gates** are `bun run lint` + `bun run typecheck`. QA is design-review driven through `/impeccable` plus browser verification at **1440px desktop and 375px mobile** before finishing.
 - **Documented QA expectation**: benchmark/value signals must be coverage-gated (only render over the scored subset ≥ 5 models; never imply page-wide TerminalBench coverage). Respect the sparse-data reality — do not invent benchmark data.
 - If you add tests, follow the observable-contract/behavioral style; there is no existing runner or convention to match, so state the framework you introduce.
