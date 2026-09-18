@@ -250,7 +250,7 @@ export function FiltersPanel(props: {
           </div>
           <div class="min-w-0">
             <label class={MF_SUB} for={`bench-max-cost${m}`}>
-              Max cost (USD / attempt)
+              Max $/attempt
             </label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-body pointer-events-none">
