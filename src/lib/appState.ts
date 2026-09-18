@@ -219,7 +219,7 @@ function getFetchErrorMessage(error: unknown): string {
 export interface AppState {
   /** Full model catalogue from the committed snapshot. */
   models: () => AIModel[];
-  /** Epoch ms of the current dataset's fetch moment; feeds the freshness stamp. */
+  /** Epoch ms of the snapshot's taken-at moment; feeds the freshness stamp. Null when the snapshot carries no stamp (legacy file) or the parse fails. */
   dataUpdatedAt: () => number | null;
   loading: () => boolean;
   error: () => string | null;
@@ -309,7 +309,17 @@ export function createAppState(): AppState {
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const data: ModelsResponse = await res.json();
       setModels(data.data ?? []);
-      setDataUpdatedAt(Date.now());
+      // The stamp must reflect when the snapshot was taken, not when this
+      // client fetched it — Date.now() here always reads "just now". Prefer
+      // the embedded stamp; fall back to the asset's Last-Modified (legacy
+      // snapshot without a stamp) so the label degrades to deploy time
+      // rather than vanishing.
+      const takenAt =
+        typeof data.snapshotTakenAt === "string" ? Date.parse(data.snapshotTakenAt) : NaN;
+      const lastModified = res.headers.get("Last-Modified");
+      const fallbackAt = lastModified ? Date.parse(lastModified) : NaN;
+      const stampedAt = Number.isNaN(takenAt) ? fallbackAt : takenAt;
+      setDataUpdatedAt(Number.isNaN(stampedAt) ? null : stampedAt);
     } catch (err) {
       setError(getFetchErrorMessage(err));
     } finally {

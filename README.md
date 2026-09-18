@@ -25,7 +25,7 @@ A recency-first, searchable explorer of every AI model exposed by the Kilo Gatew
 catalogue is snapshotted into the repo and shipped as a static asset:
 
 1. `public/data/models.json` — committed snapshot of the gateway catalogue.
-2. `npm run models:sync` — refetches the catalogue into that file (Node built-ins only; no
+2. `bun run models:sync` — refetches the catalogue into that file (runtime built-ins only; no
    dependencies required).
 3. A GitHub Actions workflow (`.github/workflows/deploy.yml`) runs every 15 minutes: it
    snapshots the catalogue, commits it when the bytes changed, builds, and deploys to Pages.
@@ -34,7 +34,7 @@ catalogue is snapshotted into the repo and shipped as a static asset:
 
 ### Prerequisites
 
-- Node.js ≥ 20.9 (Next-free SPA, but Vite 7 requires it); npm or [Bun](https://bun.sh/).
+- [Bun](https://bun.sh/) ≥ 1.0 (package manager, script runner, and runtime).
 
 ### Installation
 
@@ -45,15 +45,15 @@ catalogue is snapshotted into the repo and shipped as a static asset:
    ```
 2. Install dependencies:
    ```bash
-   npm install
+   bun install
    ```
 3. Refresh the local catalogue snapshot (optional; a recent one is committed):
    ```bash
-   npm run models:sync
+   bun run models:sync
    ```
 4. Start the development server:
    ```bash
-   npm run dev
+   bun run dev
    ```
 5. Open [http://localhost:5173](http://localhost:5173) in your browser.
 
@@ -73,13 +73,13 @@ catalogue is snapshotted into the repo and shipped as a static asset:
 
 | Command | Description |
 |---------|-------------|
-| `npm install` | Install dependencies |
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | Build for production (`BASE_PATH=/<repo>/` for Pages) |
-| `npm run preview` | Serve the production build locally |
-| `npm run lint` | Run ESLint checks |
-| `npm run typecheck` | Run TypeScript type checks |
-| `npm run models:sync` | Refresh the catalogue snapshot |
+| `bun install` | Install dependencies |
+| `bun run dev` | Start Vite dev server |
+| `bun run build` | Build for production (`BASE_PATH=/<repo>/` for Pages) |
+| `bun run preview` | Serve the production build locally |
+| `bun run lint` | Run ESLint checks |
+| `bun run typecheck` | Run TypeScript type checks |
+| `bun run models:sync` | Refresh the catalogue snapshot |
 
 ## Deployment
 

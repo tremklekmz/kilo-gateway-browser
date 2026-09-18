@@ -12,7 +12,7 @@ function formatFreshness(updatedAtMs: number, nowMs: number): string {
 }
 
 /**
- * Live "Updated X ago" stamp for the dataset's fetch moment. Ticks itself
+ * Live "Updated X ago" stamp for the snapshot's taken-at moment. Ticks itself
  * every 30s so the label stays current without re-rendering the owning list.
  * Render it OUTSIDE any aria-live region — the tick would otherwise re-announce
  * on a screen reader every 30s.
@@ -27,7 +27,7 @@ export function FreshnessStamp(props: { updatedAt: number; class?: string }) {
   return (
     <time
       datetime={new Date(props.updatedAt).toISOString()}
-      title={`Data fetched ${new Date(props.updatedAt).toLocaleString()}`}
+      title={`Snapshot taken ${new Date(props.updatedAt).toLocaleString()}`}
       class={props.class}
     >
       Updated {formatFreshness(props.updatedAt, now())}
