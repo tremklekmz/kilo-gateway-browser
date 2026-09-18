@@ -355,7 +355,12 @@ export function createAppState(): AppState {
     }, 250);
   }
 
-  function resetFilters(keepAssumptions = filters().costAssumptions) {
+  function resetFilters() {
+    // Takes no arguments by design: this is wired directly as an event
+    // handler, and a click MouseEvent in the first parameter slot would
+    // otherwise be stored as costAssumptions — corrupting the filter state
+    // so the badge keeps counting 1 after a reset. Cost assumptions are
+    // deliberately preserved (normalized to heal any malformed value).
     // Compute the full next object up front (including the URL write) — under
     // Solid 2 staged writes, reading after a setter in the same scope would
     // still see the previous committed value.
@@ -370,19 +375,36 @@ export function createAppState(): AppState {
       benchMaxCost: "",
       dateFrom: "",
       dateTo: "",
-      costAssumptions: keepAssumptions,
+      costAssumptions: normalizeCostAssumptions(filters().costAssumptions),
       view: filters().view,
     };
     setFilters(next);
-    replaceQuery(next.view !== "grid" ? `view=${next.view}` : "");
+    replaceQuery(serializeFilters(next));
     setVisibleCount(PAGE_SIZE);
   }
 
   function resetAll() {
+    // Full reset including cost assumptions. Builds its own next object
+    // instead of delegating: resetFilters must not read the signal after a
+    // write in the same scope (staged writes still return the old value).
+    const next: AppFilters = {
+      search: "",
+      selectedProvider: "",
+      freeOnly: false,
+      sortBy: "newest",
+      priceMin: "",
+      priceMax: "",
+      benchMin: "",
+      benchMaxCost: "",
+      dateFrom: "",
+      dateTo: "",
+      costAssumptions: { ...DEFAULT_COST_ASSUMPTIONS },
+      view: filters().view,
+    };
     writeStoredCostAssumptions(DEFAULT_COST_ASSUMPTIONS);
-    // Pass the assumptions explicitly: resetFilters must not read the signal
-    // after the write above (staged writes still return the old value here).
-    resetFilters(DEFAULT_COST_ASSUMPTIONS);
+    setFilters(next);
+    replaceQuery(serializeFilters(next));
+    setVisibleCount(PAGE_SIZE);
   }
 
   return {
