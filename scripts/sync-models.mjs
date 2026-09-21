@@ -38,8 +38,12 @@ try {
   } catch {
     prev = null; // No usable snapshot yet — write through below.
   }
-  const prevDataJson = prev && Array.isArray(prev.data) ? JSON.stringify(prev.data) : null;
-  if (prevDataJson === JSON.stringify(data.data) && typeof prev.snapshotTakenAt === "string") {
+  // The `enkrypt` block is unused by the app and churns on its own freshness
+  // timestamps (lastCheckedAt/staleAfter), so exclude it from the comparison
+  // to keep CI commits change-driven on catalogue data the UI actually shows.
+  const stripEnkrypt = (models) => JSON.stringify(models, (key, value) => (key === "enkrypt" ? undefined : value));
+  const prevDataJson = prev && Array.isArray(prev.data) ? stripEnkrypt(prev.data) : null;
+  if (prevDataJson === stripEnkrypt(data.data) && typeof prev.snapshotTakenAt === "string") {
     console.log(`models:sync unchanged (${data.data.length} models); snapshot kept.`);
     process.exit(0);
   }
